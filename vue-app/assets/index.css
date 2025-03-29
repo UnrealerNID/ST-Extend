@@ -1,1 +1,6 @@
-html,body,#app{width:fit-content;height:fit-content}
+html,
+body,
+#app {
+  width: fit-content;
+  height: fit-content;
+}

@@ -29,14 +29,6 @@ export default defineConfig({
       },
     },
   },
-  // 设置基础路径为相对路径
-  base: "./",
-  // 解析配置
-  resolve: {
-    alias: {
-      "@": resolve(__dirname, "src"),
-    },
-  },
   // 开发服务器配置
   server: {
     // 允许跨域访问

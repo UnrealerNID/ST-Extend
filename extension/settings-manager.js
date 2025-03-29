@@ -25,10 +25,15 @@ class SettingsManager {
 
   /**
    * 获取当前设置
-   * @returns {Object} - 当前设置对象
+   * @param {string} key - 设置键名
+   * @param {any} defaultValue - 默认值
+   * @returns {any} - 当前设置值
    */
-  getSettings() {
-    return extension_settings[this.extensionName];
+  getSettings(key = "", defaultValue = undefined) {
+    if (key === "") {
+      return extension_settings[this.extensionName];
+    }
+    return extension_settings[this.extensionName][key] || defaultValue;
   }
 
   /**
