@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "noImplicitAny": false,
+    "allowJs": true,
+    "checkJs": true,
+    "outDir": "./dist-types"
+  },
+  "include": ["*.js", "*.ts", "*.d.ts", "extension/index.js", "extension/settings-manager.js", "extension/plugin-loader.js"],
+  "exclude": [
+    "node_modules", 
+    "dist",
+    "../../../extensions.js"
+  ]
+}

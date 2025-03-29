@@ -3,9 +3,9 @@
   "loading_order": 9,
   "requires": [],
   "optional": [],
-  "js": "index.js",
-  "css": "style.css",
-  "author": "yourNameHere",
+  "js": "extension/index.js",
+  "css": "extension/style.css",
+  "author": "UnrealerNID",
   "version": "1.0.0",
-  "homePage": "yourUrlHere"
+  "homePage": "https://github.com/UnrealerNID/Plugins"
 }

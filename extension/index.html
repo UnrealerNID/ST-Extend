@@ -1,0 +1,28 @@
+<!-- 建议您向 ST 添加额外的 HTML 元素。
+    将 HTML 与代码分开是一种良好的实践 -->
+<div class="extension-settings">
+  <!-- 插件设置界面 -->
+  <div class="inline-drawer">
+    <div class="inline-drawer-toggle inline-drawer-header">
+      <b>插件</b>
+      <!-- 下拉图标 -->
+      <div
+        class="inline-drawer-icon fa-solid fa-circle-chevron-down down"
+      ></div>
+    </div>
+    <!-- 抽屉式菜单的内容区域 -->
+    <div class="inline-drawer-content">
+      <!-- 启用Vue应用设置和开发模式设置 -->
+      <div class="extension_block flex-container">
+        <input type="checkbox" id="enable_plugin" />
+        <label for="enable_plugin">启用插件</label>
+      </div>
+      <div class="extension_block flex-container">
+        <input type="checkbox" id="dev_mode_setting" />
+        <label for="dev_mode_setting"> 开发者模式 </label>
+      </div>
+      <!-- Vue应用的挂载点 -->
+      <div id="plugin-app"></div>
+    </div>
+  </div>
+</div>
