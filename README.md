@@ -1,33 +1,47 @@
-# SillyTavern Extension Example
+# SillyTavern Google API 插件
 
-_Provide a brief description of how your extension works, what problem it aims to solve._
+这个插件为 SillyTavern 提供了 Google Gemini API 的集成支持，允许用户使用自己的 Google API 密钥访问 Gemini 系列模型。插件支持 API 密钥管理、模型选择和 API 轮询功能，提升了使用 Google AI 服务的便利性和灵活性。
 
-## Features
+## 特性
 
-_Describe some of the main selling points of your extension._
+- 支持添加和管理多个 Google API 密钥
+- 自动获取并显示最新的 Gemini 模型列表
+- 支持 API 密钥轮询，在多个密钥之间自动切换
+- 与 SillyTavern 无缝集成，提供友好的用户界面
+- 支持实时显示当前使用的 API 密钥状态
 
-## Installation and Usage
+## 安装和使用
 
-### Installation
+### 安装
 
-_In most cases, this should just be using ST's inbuilt extension installer._
+1. 在 SillyTavern 中，导航到"扩展"标签
+2. 点击"从 URL 安装"
+3. 输入此仓库的 URL
+4. 点击"安装"
 
-### Usage
+### 使用
 
-_Explain how to use this extension._
+1. 安装后，启用插件
+2. 在设置中添加您的 Google API 密钥
+3. 点击"更新模型"按钮获取最新的 Gemini 模型列表
+4. 在聊天设置中选择您想要使用的 Gemini 模型
+5. 如果有多个 API 密钥，可以启用 API 轮询功能
 
-## Prerequisites
+## 前提条件
 
-_Specify the version of ST necessary here._
+- SillyTavern 1.10.0 或更高版本
+- 有效的 Google API 密钥（可以从[Google AI Studio](https://makersuite.google.com/)获取）
 
-## Support and Contributions
+## 支持和贡献
 
-_Where should someone ask for support?_
+如果您遇到问题或有改进建议，请在 GitHub 仓库中创建 Issue。
 
-_Consider including your own contact info for help/questions._
+欢迎通过 Pull Request 贡献代码，帮助改进这个插件。
 
-_How can people help add to this extension?_
+## 致谢
 
-## License
+特别感谢[ZerxZ/SillyTavern-Extension-ZerxzLib](https://github.com/ZerxZ/SillyTavern-Extension-ZerxzLib)项目，本插件的部分代码结构和实现思路受到了该项目的启发。
 
-_Be cool, use an open source license._
+## 许可证
+
+MIT License

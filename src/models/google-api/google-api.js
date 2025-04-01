@@ -42,6 +42,8 @@ class GoogleAPI {
     this._models = DEFAULT_SETTINGS.MODELS;
     this._curryModel = DEFAULT_SETTINGS.CURRY_MODEL;
     this._ui = new GoogleAPIUI(this);
+    this._switchApiKey = null;
+    this._updateModel = null;
   }
 
   /**
@@ -51,12 +53,41 @@ class GoogleAPI {
   async register(containerSelector = "#extensions_settings") {
     await this.load();
     this._ui.initTemplate(containerSelector);
-    STFunction.addEventListener("CHAT_COMPLETION_SETTINGS_READY", () =>
-      this.switchApiKey()
+
+    // 绑定方法到this实例
+    this._switchApiKey = this.switchApiKey.bind(this);
+    this._updateModel = this.updateModel.bind(this);
+
+    // 直接使用绑定后的方法作为事件监听器
+    STFunction.addEventListener(
+      "CHAT_COMPLETION_SETTINGS_READY",
+      this._switchApiKey
     );
-    STFunction.addEventListener("CHATCOMPLETION_MODEL_CHANGED", () =>
-      this.updateModel(STFunction.oai_settings.google_model)
+    STFunction.addEventListener(
+      "CHATCOMPLETION_MODEL_CHANGED",
+      this._updateModel
     );
+  }
+  /**
+   * 卸载并清理资源
+   */
+  unregister() {
+    // 移除事件监听器
+    STFunction.removeEventListener(
+      "CHAT_COMPLETION_SETTINGS_READY",
+      this.switchApiKey
+    );
+    STFunction.removeEventListener(
+      "CHATCOMPLETION_MODEL_CHANGED",
+      this.updateModel
+    );
+
+    // 清理UI
+    if (this._ui) {
+      this._ui.removeTemplate();
+    }
+
+    console.log("Google API 组件已卸载");
   }
 
   /**
@@ -236,7 +267,7 @@ class GoogleAPI {
       } else {
         toastr.info("没有新的模型可添加", "提示");
       }
-      this.updateModel(STFunction.oai_settings.google_model);
+      this.updateModel();
       return models;
     } catch (e) {
       console.error("更新模型时出错:", e);
@@ -245,11 +276,9 @@ class GoogleAPI {
   }
   /**
    * 更新当前模型
-   * @param {string} model - 新的模型名称
    */
-  updateModel(model) {
-    if (!model) return;
-    this._curryModel = model;
+  updateModel() {
+    this._curryModel = STFunction.oai_settings.google_model;
     this.save();
   }
   /**

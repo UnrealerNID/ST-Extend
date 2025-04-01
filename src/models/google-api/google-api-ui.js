@@ -39,7 +39,22 @@ class GoogleAPIUI {
       }
     );
   }
+  /**
+   * 移除模板
+   */
+  removeTemplate() {
+    if (!this._container) return;
+    // 移除所有事件监听器
+    $(this._container).find("button, input, select").off();
 
+    // 使用TemplateLoader卸载模板
+    TemplateLoader.unmountTemplate(this._container);
+
+    // 清空引用
+    this._container = null;
+
+    console.log("Google API UI 已移除");
+  }
   /**
    * 初始化事件
    */

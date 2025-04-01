@@ -104,6 +104,19 @@ class STFunction {
     eventSource.on(eventKey, callback);
   }
   /**
+   * 移除事件监听器
+   * @param {string|symbol} eventType - 事件类型，可以是event_types中的常量
+   * @param {Function} callback - 事件处理函数
+   */
+  static removeEventListener(eventType, callback) {
+    // 如果传入的是事件类型的字符串名称，则从event_types中获取对应的值
+    const eventKey =
+      typeof eventType === "string" && event_types[eventType]
+        ? event_types[eventType]
+        : eventType;
+    eventSource.removeListener(eventKey, callback);
+  }
+  /**
    * 调用通用弹窗
    * @param {HTMLElement|string} html - 弹窗内容
    * @param {string} type - 弹窗类型
