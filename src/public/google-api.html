@@ -1,0 +1,68 @@
+<!-- Google API管理界面容器 -->
+<div class="google-api-block">
+  <hr />
+  <!-- API密钥列表容器 -->
+  <div class="google-api-content"></div>
+  <!-- 添加API按钮容器 -->
+  <div class="google-api-bottom flex-container">
+    <div class="left flex-container flex2">
+      <div
+        id="add_api"
+        class="menu_button menu_button_icon interactable"
+        title="添加API密钥"
+      >
+        <span class="fa-solid fa-plus"></span><span>添加API</span>
+      </div>
+      <div
+        id="batch_add"
+        class="menu_button menu_button_icon interactable"
+        title="批量添加API密钥"
+      >
+        <span class="fa-solid fa-list-ol"></span><span>批量添加</span>
+      </div>
+      <div
+        id="update_models"
+        class="menu_button menu_button_icon interactable"
+        title="更新模型"
+      >
+        <span class="fa-solid fa-sync"></span><span>更新模型</span>
+      </div>
+      <div
+        id="api_status"
+        class="flex-container alignitemscenter interactable"
+      ></div>
+    </div>
+    <div class="right flex-container flex1">
+      <div
+        id="toggle_rotation"
+        class="flex-container interactable"
+        title="启用轮询"
+      >
+        <input type="checkbox" id="enable_rotation" />
+        <label for="enable_rotation">启用轮询</label>
+      </div>
+    </div>
+  </div>
+  <hr />
+</div>
+<style>
+  .google-api-bottom {
+    align-items: center;
+  }
+  .google-api-bottom .left {
+    justify-content: start;
+  }
+  .google-api-bottom .right {
+    justify-content: end;
+  }
+  /* 启用状态的开关按钮颜色 */
+  .api-key-item .killSwitch.fa-toggle-on {
+    color: var(--SmartThemeQuoteColor);
+  }
+
+  /* 当前活跃API密钥输入框的高亮样式 */
+  .text_pole.api-key-active {
+    border: 2px solid var(--SmartThemeQuoteColor);
+    box-shadow: 0 0 5px var(--SmartThemeQuoteColor);
+  }
+</style>
