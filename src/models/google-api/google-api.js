@@ -43,7 +43,7 @@ class GoogleAPI {
     this._curryModel = DEFAULT_SETTINGS.CURRY_MODEL;
     this._ui = new GoogleAPIUI(this);
     this._switchApiKey = null;
-    this._updateModel = null;
+    this._updateCurrentModel = null;
   }
 
   /**
@@ -56,7 +56,7 @@ class GoogleAPI {
 
     // 绑定方法到this实例
     this._switchApiKey = this.switchApiKey.bind(this);
-    this._updateModel = this.updateModel.bind(this);
+    this._updateCurrentModel = this.updateCurrentModel.bind(this);
 
     // 直接使用绑定后的方法作为事件监听器
     STFunction.addEventListener(
@@ -65,7 +65,7 @@ class GoogleAPI {
     );
     STFunction.addEventListener(
       "CHATCOMPLETION_MODEL_CHANGED",
-      this._updateModel
+      this._updateCurrentModel
     );
   }
   /**
@@ -75,11 +75,11 @@ class GoogleAPI {
     // 移除事件监听器
     STFunction.removeEventListener(
       "CHAT_COMPLETION_SETTINGS_READY",
-      this.switchApiKey
+      this._switchApiKey
     );
     STFunction.removeEventListener(
       "CHATCOMPLETION_MODEL_CHANGED",
-      this.updateModel
+      this._updateCurrentModel
     );
 
     // 清理UI
@@ -98,6 +98,7 @@ class GoogleAPI {
       "google_api_settings",
       DEFAULT_SETTINGS
     );
+    // 加载设置
     this._apiKey = settings.API_KEY;
     this._currentIndex = settings.CURRY_INDEX;
     this._currentApiKey = this._apiKey?.[this._currentIndex]?.key;
@@ -267,7 +268,7 @@ class GoogleAPI {
       } else {
         toastr.info("没有新的模型可添加", "提示");
       }
-      this.updateModel();
+      this.updateCurrentModel();
       return models;
     } catch (e) {
       console.error("更新模型时出错:", e);
@@ -277,7 +278,7 @@ class GoogleAPI {
   /**
    * 更新当前模型
    */
-  updateModel() {
+  updateCurrentModel() {
     this._curryModel = STFunction.oai_settings.google_model;
     this.save();
   }
@@ -307,8 +308,6 @@ class GoogleAPI {
    * @param {number} index - 要设置为活跃的API密钥索引
    */
   setActiveApiKey(index) {
-    this._currentIndex = index;
-
     // 更新内部数据
     this._apiKey.forEach((api, i) => {
       api.isActive = i === index;
@@ -344,14 +343,15 @@ class GoogleAPI {
 
     let key = null;
     let loopCount = 0;
+    let nextIndex = this._currentIndex;
     while (loopCount < activeApiKeys.length) {
-      const apiKey = activeApiKeys[this._currentIndex];
+      const apiKey = activeApiKeys[nextIndex];
+      nextIndex = (nextIndex + 1) % activeApiKeys.length;
       if (apiKey && apiKey.enabled && apiKey.key !== "" && !apiKey.error) {
         key = apiKey.key;
-        this._currentIndex = (this._currentIndex + 1) % activeApiKeys.length;
         break;
       }
-      this._currentIndex = (this._currentIndex + 1) % activeApiKeys.length;
+      this._currentIndex = nextIndex;
       loopCount++;
     }
 
@@ -381,7 +381,7 @@ class GoogleAPI {
    * @returns {number} - 当前索引
    */
   getCurrentIndex() {
-    return this._currentIndex;
+    return this._currentIndex - 1;
   }
 
   /**

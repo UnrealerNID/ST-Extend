@@ -1,117 +1,210 @@
 import PluginSetting from "../utils/plugin-setting.js";
 import GoogleAPI from "../models/google-api/google-api.js";
+import EventHandler from "../utils/event-handler.js";
 const google_api = new GoogleAPI();
 /**
  * 插件管理器
  */
 class PluginManager {
   constructor() {
-    this.isRegistered = false;
-    this.components = [];
+    this._isInitialized = false;
+    this._enabledPlugin = false;
+    this._enabledGoogleApi = false;
+    this._isRegistered = false;
+    this._components = new Map();
+  }
+  /**
+   * 初始化插件管理器
+   */
+  init() {
+    console.log(`${PluginSetting.extensionName} init`);
+    EventHandler.bindEvent("#enable_plugin", "input", (e) =>
+      this.onEnablePluginInput(e)
+    );
+    this.loadSettings();
+    if (this._enabledPlugin) {
+      this.register();
+    }
+    this._isInitialized = true;
   }
   /**
    * 注册插件加载器
    * 将插件加载器实例注册到全局变量中，以便其他模块使用
    */
-  register() {
+  register(notify = false) {
+    if (this._isRegistered) {
+      return;
+    }
+    this.bindEvents();
+    this.registerComponents();
     window[PluginSetting.extensionName] =
       window[PluginSetting.extensionName] || {};
     window[PluginSetting.extensionName]["plugin_manager"] = this;
-    console.log(`插件加载器 ${PluginSetting.extensionName} 已注册`);
-
-    this.bindEvents();
-    this.loadSettings();
-    // 根据插件启用状态决定是否注册组件
-    const isEnabled = PluginSetting.getSetting("enablePlugin", true);
-    this.registerComponents(isEnabled);
+    console.log(`${PluginSetting.extensionName} 已注册`);
+    notify && toastr.success(`${PluginSetting.extensionName} 已注册`);
+    this._isRegistered = true;
   }
   /**
-   * 注册或卸载所有组件
-   * @param {boolean} register - 是否注册组件
+   * 卸载插件加载器
+   * 卸载插件加载器实例
    */
-  registerComponents(register = true) {
-    if (!register) {
-      this.unregisterComponents();
+  unregister(notify = false) {
+    if (!this._isRegistered) {
       return;
     }
-    if (this.isRegistered) return;
+    this.unbindEvents();
+    this.unregisterComponents();
+    window[PluginSetting.extensionName] =
+      window[PluginSetting.extensionName] || {};
+    window[PluginSetting.extensionName]["plugin_manager"] = null;
+    console.log(`插件加载器 ${PluginSetting.extensionName} 已卸载`);
+    notify && toastr.success(`${PluginSetting.extensionName} 组件已卸载`);
+    this._isRegistered = false;
+  }
+  /**
+   * 注册所有组件
+   */
+  registerComponents() {
     // 更新轮询设置
-    this.googleApiRegister(PluginSetting.getSetting("enableGoogleApi", true));
-
-    this.isRegistered = true;
-    console.log(`${PluginSetting.extensionName} 组件已注册`);
+    this.manageComponent(
+      "google_api",
+      google_api,
+      this._enabledGoogleApi,
+      "#makersuite_form",
+      false,
+      "Google API 组件已注册",
+      "Google API 组件已卸载"
+    );
   }
 
   /**
    * 卸载所有组件
    */
   unregisterComponents() {
-    if (!this.isRegistered) return;
-
     // 卸载所有组件
-    this.components.forEach((component) => {
+    this._components.forEach((component) => {
       if (typeof component.unregister === "function") {
         component.unregister();
       }
     });
 
-    this.components = [];
-    this.isRegistered = false;
-    console.log(`${PluginSetting.extensionName} 组件已卸载`);
+    this._components.clear();
   }
 
   /**
    * 绑定UI事件
    */
   bindEvents() {
-    // 添加启用插件事件监听
-    $("#enable_plugin").on("input", (e) => this.onEnablePluginInput(e));
     // 添加启用轮询事件监听
-    $("#enable_google_api").on("input", (e) => this.onEnableGoogleApiInput(e));
+    EventHandler.bindEvent("#enable_google_api", "input", (e) =>
+      this.onEnableGoogleApiInput(e)
+    );
   }
   /**
-   * 处理启用插件变更
-   * @param {Event} event - 输入事件
+   * 解绑UI事件
    */
-  onEnablePluginInput(event) {
-    const value = $(event.target).prop("checked");
-    PluginSetting.setSetting("enablePlugin", value);
-    // 根据启用状态注册或卸载组件
-    this.registerComponents(value);
-  }
-  /**
-   * 处理启用轮询变更
-   * @param {Event} event - 输入事件
-   */
-  onEnableGoogleApiInput(event) {
-    const value = $(event.target).prop("checked");
-    PluginSetting.setSetting("enableGoogleApi", value);
-    // 根据启用状态注册或卸载组件
-    this.googleApiRegister(value, true);
+  unbindEvents() {
+    // 移除启用轮询事件监听
+    EventHandler.unbindEvent("#enable_google_api", "input");
   }
   /**
    * 加载设置
    */
   loadSettings() {
     PluginSetting.initSettings();
+    this._enabledPlugin = PluginSetting.getSetting("enablePlugin", true);
+    this._enabledGoogleApi = PluginSetting.getSetting("enableGoogleApi", true);
     // 更新启用插件设置
-    $("#enable_plugin")
-      .prop("checked", PluginSetting.getSetting("enablePlugin", false))
-      .trigger("input");
+    EventHandler.propEvent("#enable_plugin", "checked", this._enabledPlugin);
+    // 更新启用轮询设置
+    EventHandler.propEvent(
+      "#enable_google_api",
+      "checked",
+      this._enabledGoogleApi
+    );
   }
   /**
-   * 注册或卸载Google API组件
-   * @param {boolean} register - 是否注册组件
-   * @param {boolean} [notify=false] - 是否显示通知
+   * 处理启用插件变更
+   * @param {Event} event - 输入事件
    */
-  googleApiRegister(register = true, notify = false) {
+  onEnablePluginInput(event) {
+    EventHandler.handleEvent({
+      event,
+      prop: "checked",
+      func: (key, value) => PluginSetting.setSetting(key, value),
+      settingKey: "enablePlugin",
+      callback: (value) => {
+        value ? this.register(true) : this.unregister(true);
+      },
+    });
+  }
+  /**
+   * 处理启用轮询变更
+   * @param {Event} event - 输入事件
+   */
+  onEnableGoogleApiInput(event) {
+    EventHandler.handleEvent({
+      event,
+      prop: "checked",
+      func: (key, value) => PluginSetting.setSetting(key, value),
+      settingKey: "enableGoogleApi",
+      callback: (value) => {
+        this.manageComponent(
+          "google_api",
+          google_api,
+          value,
+          "#makersuite_form",
+          true,
+          "Google API 组件已注册",
+          "Google API 组件已卸载"
+        );
+      },
+    });
+  }
+
+  /**
+   * 通用组件注册或卸载方法
+   * @param {string} componentName - 组件名称
+   * @param {Object} component - 组件实例
+   * @param {boolean} register - 是否注册组件
+   * @param {string} selector - 注册时的选择器（如果需要）
+   * @param {boolean} [notify=false] - 是否显示通知
+   * @param {string} [registerMsg] - 注册成功消息
+   * @param {string} [unregisterMsg] - 卸载成功消息
+   * @returns {boolean} - 操作是否成功
+   */
+  manageComponent(
+    componentName,
+    component,
+    register,
+    selector,
+    notify = false,
+    registerMsg,
+    unregisterMsg
+  ) {
+    // 卸载逻辑
     if (!register) {
-      google_api.unregister();
-      notify && toastr.success("Google API 组件已卸载");
-      return;
+      if (!this._components.has(componentName)) {
+        return false;
+      }
+      if (typeof component.unregister === "function") {
+        component.unregister();
+      }
+      notify && toastr.success(unregisterMsg || `${componentName} 组件已卸载`);
+      this._components.delete(componentName);
+      return true;
     }
-    google_api.register("#makersuite_form");
-    notify && toastr.success("Google API 组件已注册");
+    if (!this._enabledPlugin) return;
+    // 注册逻辑
+    if (this._components.has(componentName)) {
+      return false;
+    }
+    if (typeof component.register === "function") {
+      component.register(selector);
+    }
+    notify && toastr.success(registerMsg || `${componentName} 组件已注册`);
+    this._components.set(componentName, component);
+    return true;
   }
 }
 export default PluginManager;

@@ -1,5 +1,5 @@
 {
-  "display_name": "插件",
+  "display_name": "插件助手",
   "loading_order": 100,
   "requires": [],
   "optional": [],
@@ -7,5 +7,5 @@
   "css": "src/style.css",
   "author": "UnrealerNID",
   "version": "1.0.0",
-  "homePage": "https://github.com/UnrealerNID/Plugins"
+  "homePage": "https://github.com/UnrealerNID/SillyTavern-Extension-Plugins"
 }

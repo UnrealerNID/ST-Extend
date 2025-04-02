@@ -36,14 +36,6 @@ class PluginSetting {
   static setSetting(key, value) {
     STFunction.setSettings(this.extensionName, key, value);
   }
-
-  /**
-   * 获取所有设置
-   * @returns {Object} - 所有设置
-   */
-  static getAllSettings() {
-    return STFunction.getSettings(this.extensionName);
-  }
 }
 
 export default PluginSetting;

@@ -30,8 +30,8 @@ jQuery(async () => {
 
     // 等待页面加载完成
     await waitForPageLoad();
-    // 注册插件加载器
-    pluginManager.register();
+    // 初始化插件管理器
+    pluginManager.init();
   } catch (error) {
     console.error("初始化插件扩展时出错:", error);
     // @ts-ignore

@@ -262,8 +262,7 @@ class GoogleAPIUI {
 
     // 创建新的模型组
     const newModelsGroup = document.createElement("optgroup");
-    newModelsGroup.label =
-      "API Models (" + new Date().toLocaleDateString() + ")";
+    newModelsGroup.label = "Plugin Models";
 
     // 获取现有模型值列表，防止重复
     // @ts-ignore
@@ -287,8 +286,14 @@ class GoogleAPIUI {
     // 如果有新模型，添加到select
     if (addedCount > 0) {
       // 添加新的模型组
-      // @ts-ignore
-      selectElement.appendChild(newModelsGroup);
+      if (selectElement.firstChild) {
+        // @ts-ignore
+        selectElement.insertBefore(newModelsGroup, selectElement.firstChild);
+      } else {
+        // 如果select没有子元素，直接添加
+        // @ts-ignore
+        selectElement.appendChild(newModelsGroup);
+      }
     }
 
     // 恢复之前选中的值
