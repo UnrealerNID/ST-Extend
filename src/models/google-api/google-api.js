@@ -1,33 +1,26 @@
 import PluginSetting from "../../utils/plugin-setting.js";
 import STFunction from "../../utils/st-function.js";
 import GoogleAPIUI from "./google-api-ui.js";
-
-// 默认设置
-const DEFAULT_SETTINGS = {
-  API_KEY: [
-    {
-      key: "",
-      enabled: true,
-      error: false,
-      errorMessage: "",
-      isActive: true,
-      index: 0,
-    },
-  ],
-  CURRY_INDEX: 0,
-  ROTATION_ENABLED: true,
-  MODELS: [],
-  CURRY_MODEL: "",
-};
-
+import GoogleAPIError from "./google-api-error.js";
+import GoogleApiModel from "./google-api-model.js";
+import GoogleApiRotation from "./google-api-rotation.js";
 // 默认API密钥
 const DEFAULT_API_KEY = {
   key: "",
   enabled: true,
-  error: false,
-  errorMessage: "",
   isActive: false,
   index: 0,
+};
+// 默认设置
+const DEFAULT_SETTINGS = {
+  ROTATION_ENABLED: true, // 是否启用轮询
+  USAGE_ENABLED: true, // 是否启用API统计
+  ERROR_ENABLED: true, // 是否启用错误处理
+  API_KEY: [DEFAULT_API_KEY], // API密钥列表
+  CURRY_INDEX: 0, // 当前API密钥索引
+  MODELS: [], // 模型列表
+  CURRY_MODEL: "", // 当前模型
+  TOASTR_ID: [], // toastr ID列表
 };
 
 /**
@@ -35,15 +28,20 @@ const DEFAULT_API_KEY = {
  */
 class GoogleAPI {
   constructor() {
-    this._rotationEnabled = DEFAULT_SETTINGS.ROTATION_ENABLED;
-    this._apiKey = DEFAULT_SETTINGS.API_KEY;
-    this._currentApiKey = null;
-    this._currentIndex = DEFAULT_SETTINGS.CURRY_INDEX;
-    this._models = DEFAULT_SETTINGS.MODELS;
-    this._curryModel = DEFAULT_SETTINGS.CURRY_MODEL;
-    this._ui = new GoogleAPIUI(this);
-    this._switchApiKey = null;
-    this._updateCurrentModel = null;
+    this._rotationEnabled = DEFAULT_SETTINGS.ROTATION_ENABLED; // 是否启用轮询
+    this._usageEnabled = DEFAULT_SETTINGS.USAGE_ENABLED; // 是否启用API统计
+    this._errorEnabled = DEFAULT_SETTINGS.ERROR_ENABLED; // 是否启用错误处理
+    this._apiKey = DEFAULT_SETTINGS.API_KEY; // API密钥列表
+    this._currentApiKey = null; // 当前API密钥
+    this._currentIndex = DEFAULT_SETTINGS.CURRY_INDEX; // 当前API密钥索引
+    this._models = DEFAULT_SETTINGS.MODELS; // 模型列表
+    this._curryModel = DEFAULT_SETTINGS.CURRY_MODEL; // 当前模型
+    this._toastrId = DEFAULT_SETTINGS.TOASTR_ID; // toastr ID列表
+
+    this._apiUI = new GoogleAPIUI(this); // UI实例
+    this._apiModel = new GoogleApiModel(this); // 模型实例
+    this._apiError = new GoogleAPIError(this); // API错误处理实例
+    this._apiRotation = new GoogleApiRotation(this); // API轮询实例
   }
 
   /**
@@ -52,44 +50,44 @@ class GoogleAPI {
    */
   async register(containerSelector = "#extensions_settings") {
     await this.load();
-    this._ui.initTemplate(containerSelector);
-
-    // 绑定方法到this实例
-    this._switchApiKey = this.switchApiKey.bind(this);
-    this._updateCurrentModel = this.updateCurrentModel.bind(this);
-
-    // 直接使用绑定后的方法作为事件监听器
-    STFunction.addEventListener(
-      "CHAT_COMPLETION_SETTINGS_READY",
-      this._switchApiKey
-    );
-    STFunction.addEventListener(
-      "CHATCOMPLETION_MODEL_CHANGED",
-      this._updateCurrentModel
-    );
+    this._apiUI.initTemplate(containerSelector);
+    this._registerEventListeners();
+    // 开始监听错误
+    this._apiError.startListening();
+  }
+  /**
+   * 注册事件监听器
+   * @private
+   */
+  _registerEventListeners() {
+    // 注册事件监听器
+    STFunction.addEventListener("CHAT_COMPLETION_SETTINGS_READY", () => {
+      this._apiRotation.switchApiKey();
+    });
+    STFunction.addEventListener("CHATCOMPLETION_MODEL_CHANGED", () => {
+      this.updateCurrentModel();
+    });
   }
   /**
    * 卸载并清理资源
    */
   unregister() {
+    // 清除错误监听
+    this._apiError.clearListeners();
     // 移除事件监听器
-    STFunction.removeEventListener(
-      "CHAT_COMPLETION_SETTINGS_READY",
-      this._switchApiKey
-    );
-    STFunction.removeEventListener(
-      "CHATCOMPLETION_MODEL_CHANGED",
-      this._updateCurrentModel
-    );
-
+    STFunction.removeEventListener("CHAT_COMPLETION_SETTINGS_READY", () => {
+      this._apiRotation.switchApiKey();
+    });
+    STFunction.removeEventListener("CHATCOMPLETION_MODEL_CHANGED", () => {
+      this.updateCurrentModel();
+    });
     // 清理UI
-    if (this._ui) {
-      this._ui.removeTemplate();
+    if (this._apiUI) {
+      this._apiUI.removeTemplate();
     }
 
     console.log("Google API 组件已卸载");
   }
-
   /**
    * 加载保存的API密钥
    */
@@ -99,12 +97,15 @@ class GoogleAPI {
       DEFAULT_SETTINGS
     );
     // 加载设置
+    this._rotationEnabled = settings.ROTATION_ENABLED;
+    this._usageEnabled = settings.USAGE_ENABLED;
+    this._errorEnabled = settings.ERROR_ENABLED;
     this._apiKey = settings.API_KEY;
     this._currentIndex = settings.CURRY_INDEX;
     this._currentApiKey = this._apiKey?.[this._currentIndex]?.key;
-    this._rotationEnabled = settings.ROTATION_ENABLED;
     this._models = settings.MODELS;
     this._curryModel = settings.CURRY_MODEL;
+    this._toastrId = settings.TOASTR_ID;
     // 如果没有API密钥，从ST获取
     if (this._apiKey?.length === 1 && this._apiKey[0].key === "") {
       const result = await STFunction.getSecrets();
@@ -121,9 +122,9 @@ class GoogleAPI {
       }
     }
     if (this._models?.length > 0) {
-      this._ui.updateModelsList(this._models);
+      this._apiUI.updateModelsList(this._models);
       // 更新UI选择
-      this._ui.setSelectedModel(this._curryModel, this._models);
+      this._apiUI.setSelectedModel(this._curryModel, this._models);
     }
   }
 
@@ -135,8 +136,11 @@ class GoogleAPI {
       API_KEY: this._apiKey,
       CURRY_INDEX: this._currentIndex,
       ROTATION_ENABLED: this._rotationEnabled,
+      USAGE_ENABLED: this._usageEnabled,
+      ERROR_ENABLED: this._errorEnabled,
       MODELS: this._models,
       CURRY_MODEL: this._curryModel,
+      TOASTR_ID: this._toastrId,
     });
   }
 
@@ -150,7 +154,7 @@ class GoogleAPI {
       index: newIndex,
     });
     this.save();
-    this._ui.renderApiKeys();
+    this._apiUI.renderApiKeys();
   }
 
   /**
@@ -175,7 +179,7 @@ class GoogleAPI {
     }
 
     this.save();
-    this._ui.renderApiKeys();
+    this._apiUI.renderApiKeys();
   }
 
   /**
@@ -189,12 +193,11 @@ class GoogleAPI {
     this._apiKey[index][key] = value;
     this.save();
   }
-
   /**
    * 批量添加API密钥
    */
   batchAdd() {
-    this._ui.showBatchAddDialog((result) => {
+    this._apiUI.showBatchAddDialog((result) => {
       if (!result) return;
 
       const keys = result.split("\n").filter((key) => key.trim() !== "");
@@ -210,99 +213,10 @@ class GoogleAPI {
       });
 
       this.save();
-      this._ui.renderApiKeys();
+      this._apiUI.renderApiKeys();
       toastr.success(`成功添加 ${keys.length} 个API密钥`, "成功");
     });
   }
-  /**
-   * 更新模型
-   * @returns {Promise<Array|undefined>} 模型列表
-   */
-  async updateModels() {
-    try {
-      const key = this._currentApiKey;
-      if (!key) {
-        toastr.error("没有可用的API密钥", "错误");
-        return;
-      }
-
-      toastr.info("正在更新模型列表...", "提示");
-
-      const result = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/?key=${key}`
-      );
-
-      if (!result.ok) {
-        const errorData = await result.json();
-        toastr.error(
-          `获取模型失败: ${errorData?.error?.message || "未知错误"}`,
-          "错误"
-        );
-        return;
-      }
-
-      const data = await result.json();
-      if (!data?.models) {
-        toastr.warning("未找到可用模型", "警告");
-        return;
-      }
-
-      // 获取模型数据
-      const models = data.models
-        .filter((model) => model.name.includes("gemini"))
-        .map((modelData) => {
-          const model = modelData.name.replace("models/", "");
-          const name = modelData.displayName || model;
-          return { name, model };
-        });
-
-      if (models.length === 0) {
-        toastr.warning("未找到Gemini系列模型", "警告");
-        return;
-      }
-      this._models = models;
-      // 交由UI处理模型显示
-      const added = this._ui.updateModelsList(models);
-      if (added > 0) {
-        toastr.success(`成功添加 ${added} 个新模型`, "成功");
-      } else {
-        toastr.info("没有新的模型可添加", "提示");
-      }
-      this.updateCurrentModel();
-      return models;
-    } catch (e) {
-      console.error("更新模型时出错:", e);
-      toastr.error(`更新模型失败: ${e.message || "未知错误"}`, "错误");
-    }
-  }
-  /**
-   * 更新当前模型
-   */
-  updateCurrentModel() {
-    this._curryModel = STFunction.oai_settings.google_model;
-    this.save();
-  }
-  /**
-   * 设置API错误
-   * @param {number} index - API密钥索引
-   * @param {string} message - 错误消息
-   */
-  setApiError(index, message) {
-    this.update(index, "error", true);
-    this.update(index, "errorMessage", message);
-    this._ui.updateErrorDisplay(index, true, message);
-  }
-
-  /**
-   * 清除API错误
-   * @param {number} index - API密钥索引
-   */
-  clearApiError(index) {
-    this.update(index, "error", false);
-    this.update(index, "errorMessage", "");
-    this._ui.updateErrorDisplay(index, false);
-  }
-
   /**
    * 设置当前活跃的API密钥
    * @param {number} index - 要设置为活跃的API密钥索引
@@ -313,61 +227,30 @@ class GoogleAPI {
       api.isActive = i === index;
     });
 
-    this._ui.setActiveApiKey(index);
+    this._apiUI.setActiveApiKey(index);
     this.save();
   }
-
   /**
-   * 设置轮询启用状态
-   * @param {boolean} enabled - 是否启用轮询
+   * 获取UI实例
+   * @returns {GoogleAPIUI} - UI实例
    */
-  setRotationEnabled(enabled) {
-    this._rotationEnabled = enabled;
-    this.save();
+  getUI() {
+    return this._apiUI;
   }
-
   /**
-   * 轮替API密钥
+   * 获取模型实例
+   * @returns {GoogleApiModel} - 模型实例
    */
-  switchApiKey() {
-    // 如果未启用轮询，直接返回
-    if (!this._rotationEnabled) return;
-
-    // 获取所有可用的API密钥
-    const activeApiKeys = this._apiKey;
-    // 如果没有可用的API密钥
-    if (activeApiKeys.length === 0) {
-      toastr.error("没有可用的API密钥", "错误");
-      return;
-    }
-
-    let key = null;
-    let loopCount = 0;
-    let nextIndex = this._currentIndex;
-    while (loopCount < activeApiKeys.length) {
-      const apiKey = activeApiKeys[nextIndex];
-      nextIndex = (nextIndex + 1) % activeApiKeys.length;
-      if (apiKey && apiKey.enabled && apiKey.key !== "" && !apiKey.error) {
-        key = apiKey.key;
-        break;
-      }
-      this._currentIndex = nextIndex;
-      loopCount++;
-    }
-
-    // 如果没有找到可用的API密钥
-    if (!key) {
-      toastr.error("没有可用的API密钥", "错误");
-      return;
-    }
-
-    // 设置API密钥
-    this._currentApiKey = key;
-    STFunction.setSecrets("api_key_makersuite", key);
-    // 更新UI显示
-    this.setActiveApiKey(this._currentIndex);
+  getModel() {
+    return this._apiModel;
   }
-
+  /**
+   * 获取轮询实例
+   * @returns {GoogleApiRotation} - 轮询实例
+   */
+  getRotation() {
+    return this._apiRotation;
+  }
   /**
    * 获取API密钥列表
    * @returns {Array} - API密钥列表
@@ -375,15 +258,20 @@ class GoogleAPI {
   getApiKeys() {
     return this._apiKey;
   }
-
+  /**
+   * 获取当前API密钥
+   * @returns {string} - 当前API密钥
+   */
+  getCurrentApiKey() {
+    return this._currentApiKey;
+  }
   /**
    * 获取当前索引
    * @returns {number} - 当前索引
    */
   getCurrentIndex() {
-    return this._currentIndex - 1;
+    return this._currentIndex;
   }
-
   /**
    * 检查是否启用轮询
    * @returns {boolean} - 是否启用轮询
@@ -391,26 +279,97 @@ class GoogleAPI {
   isRotationEnabled() {
     return this._rotationEnabled;
   }
-
   /**
-   * 检查指定索引的API密钥是否有错误
-   * @param {number} index - API密钥索引
-   * @returns {boolean} - 是否有错误
+   * 检查是否启用API统计
+   * @returns {boolean} - 是否启用API统计
    */
-  hasError(index) {
-    if (index < 0 || index >= this._apiKey.length) return false;
-    return this._apiKey[index].error;
+  isUsageEnabled() {
+    return this._usageEnabled;
+  }
+  /**
+   * 检查是否启用错误处理
+   * @returns {boolean} - 是否启用错误处理
+   */
+  isErrorEnabled() {
+    return this._errorEnabled;
+  }
+  /**
+   * 通用属性操作方法
+   * @param {string} property - 属性名称
+   * @param {any} value - 要设置的值
+   */
+  _setProperty(property, value) {
+    const propertyMap = {
+      // 功能开关
+      rotation: "_rotationEnabled",
+      usage: "_usageEnabled",
+      error: "_errorEnabled",
+      // 数据属性
+      models: "_models",
+      currentApiKey: "_currentApiKey",
+      currentIndex: "_currentIndex",
+      // 特殊处理
+      currentModel: () => {
+        this._curryModel = STFunction.oai_settings.google_model;
+      },
+    };
+
+    if (typeof propertyMap[property] === "function") {
+      propertyMap[property]();
+    } else if (propertyMap[property]) {
+      this[propertyMap[property]] = value;
+    }
+
+    this.save();
+  }
+  /**
+   * 设置轮询启用状态
+   * @param {boolean} enabled - 是否启用轮询
+   */
+  setRotationEnabled(enabled) {
+    this._setProperty("rotation", enabled);
+  }
+  /**
+   * 设置API统计启用状态
+   * @param {boolean} enabled - 是否启用API统计
+   */
+  setUsageEnabled(enabled) {
+    this._setProperty("usage", enabled);
+  }
+  /**
+   * 设置错误处理启用状态
+   * @param {boolean} enabled - 是否启用错误处理
+   */
+  setErrorEnabled(enabled) {
+    this._setProperty("error", enabled);
+  }
+  /**
+   * 更新模型列表
+   * @param {Array} models - 新的模型列表
+   */
+  updateModels(models) {
+    this._setProperty("models", models);
+  }
+  /**
+   * 更新当前模型
+   */
+  updateCurrentModel() {
+    this._setProperty("currentModel");
   }
 
   /**
-   * 获取指定索引的API密钥的错误消息
-   * @param {number} index - API密钥索引
-   * @returns {string} - 错误消息
+   * 设置当前API密钥
+   * @param {string} key - API密钥
    */
-  getErrorMessage(index) {
-    if (index < 0 || index >= this._apiKey.length) return "";
-    return this._apiKey[index].errorMessage;
+  setCurrentApiKey(key) {
+    this._setProperty("currentApiKey", key);
+  }
+  /**
+   * 设置当前索引
+   * @param {number} index - 当前索引
+   */
+  setCurrentIndex(index) {
+    this._setProperty("currentIndex", index);
   }
 }
-
 export default GoogleAPI;

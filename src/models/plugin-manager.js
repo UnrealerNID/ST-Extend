@@ -17,7 +17,7 @@ class PluginManager {
    * 初始化插件管理器
    */
   init() {
-    console.log(`${PluginSetting.extensionName} init`);
+    console.log(`${PluginSetting.extensionName} 初始化`);
     EventHandler.bindEvent("#enable_plugin", "input", (e) =>
       this.onEnablePluginInput(e)
     );
