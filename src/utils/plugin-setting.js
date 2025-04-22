@@ -3,7 +3,7 @@ import STFunction from "./st-function.js";
  * 插件设置管理类
  */
 class PluginSetting {
-  static extensionName = "SillyTavern-Extension-Plugins";
+  static extensionName = "ST-Extend";
   static extensionFolderPath = `scripts/extensions/third-party/${this.extensionName}`;
   static defaultSettings = {
     enablePlugin: false, // 是否启用插件
