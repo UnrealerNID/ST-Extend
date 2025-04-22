@@ -37,13 +37,11 @@ class GoogleAPI {
     this._models = DEFAULT_SETTINGS.MODELS; // 模型列表
     this._curryModel = DEFAULT_SETTINGS.CURRY_MODEL; // 当前模型
     this._toastrId = DEFAULT_SETTINGS.TOASTR_ID; // toastr ID列表
-
     this._apiUI = new GoogleAPIUI(this); // UI实例
     this._apiModel = new GoogleApiModel(this); // 模型实例
     this._apiError = new GoogleAPIError(this); // API错误处理实例
     this._apiRotation = new GoogleApiRotation(this); // API轮询实例
   }
-
   /**
    * 注册并初始化
    * @param {string|HTMLElement} [containerSelector='#extensions_settings'] - 容器选择器或元素
@@ -143,7 +141,17 @@ class GoogleAPI {
       TOASTR_ID: this._toastrId,
     });
   }
-
+  /**
+   * 切换所有API密钥的启用状态
+   * @param {boolean} enabled - 是否启用
+   */
+  toggleAllApiKeys(enabled) {
+    this._apiKey.forEach((api) => {
+      api.enabled = enabled;
+    });
+    this.save();
+    this._apiUI.refresh();
+  }
   /**
    * 添加新API密钥
    */
@@ -154,7 +162,7 @@ class GoogleAPI {
       index: newIndex,
     });
     this.save();
-    this._apiUI.renderApiKeys();
+    this._apiUI.jumpToApiPage(newIndex);
   }
 
   /**
@@ -163,10 +171,8 @@ class GoogleAPI {
    */
   remove(index) {
     if (index < 0 || index >= this._apiKey.length) return;
-
     const isActive = this._apiKey[index].isActive;
     this._apiKey.splice(index, 1);
-
     // 更新索引
     this._apiKey.forEach((api, i) => {
       api.index = i;
@@ -177,9 +183,10 @@ class GoogleAPI {
       this._currentIndex = 0;
       this._apiKey[0].isActive = true;
     }
-
     this.save();
-    this._apiUI.renderApiKeys();
+    const isLastItem = index === this._apiKey.length;
+    const targetIndex = isLastItem ? index - 1 : index;
+    this._apiUI.jumpToApiPage(targetIndex);
   }
 
   /**
@@ -189,7 +196,8 @@ class GoogleAPI {
    * @param {any} value - 属性值
    */
   update(index, key, value) {
-    if (index < 0 || index >= this._apiKey.length) return;
+    if (index < 0 || index >= this._apiKey.length || value === undefined)
+      return;
     this._apiKey[index][key] = value;
     this.save();
   }
@@ -199,21 +207,19 @@ class GoogleAPI {
   batchAdd() {
     this._apiUI.showBatchAddDialog((result) => {
       if (!result) return;
-
       const keys = result.split("\n").filter((key) => key.trim() !== "");
       if (keys.length === 0) return;
-
+      let lastIndex = this._apiKey.length - 1;
       keys.forEach((key) => {
-        const newIndex = this._apiKey.length;
         this._apiKey.push({
           ...DEFAULT_API_KEY,
           key: key.trim(),
-          index: newIndex,
+          index: lastIndex,
         });
+        lastIndex++;
       });
-
       this.save();
-      this._apiUI.renderApiKeys();
+      this._apiUI.jumpToApiPage(lastIndex);
       toastr.success(`成功添加 ${keys.length} 个API密钥`, "成功");
     });
   }
@@ -226,72 +232,120 @@ class GoogleAPI {
     this._apiKey.forEach((api, i) => {
       api.isActive = i === index;
     });
-
     this._apiUI.setActiveApiKey(index);
     this.save();
+  }
+  /**
+   * 更新当前模型
+   */
+  updateCurrentModel() {
+    this._setProperty("currentModel");
   }
   /**
    * 获取UI实例
    * @returns {GoogleAPIUI} - UI实例
    */
-  getUI() {
+  get apiUI() {
     return this._apiUI;
   }
   /**
    * 获取模型实例
    * @returns {GoogleApiModel} - 模型实例
    */
-  getModel() {
+  get apiModel() {
     return this._apiModel;
   }
   /**
    * 获取轮询实例
    * @returns {GoogleApiRotation} - 轮询实例
    */
-  getRotation() {
+  get apiRotation() {
     return this._apiRotation;
   }
   /**
    * 获取API密钥列表
    * @returns {Array} - API密钥列表
    */
-  getApiKeys() {
+  get apiKeys() {
     return this._apiKey;
   }
   /**
    * 获取当前API密钥
    * @returns {string} - 当前API密钥
    */
-  getCurrentApiKey() {
+  get currentApiKey() {
     return this._currentApiKey;
+  }
+  /**
+   * 设置当前API密钥
+   * @param {string} key - API密钥
+   */
+  set currentApiKey(key) {
+    this._setProperty("currentApiKey", key);
   }
   /**
    * 获取当前索引
    * @returns {number} - 当前索引
    */
-  getCurrentIndex() {
+  get currentIndex() {
     return this._currentIndex;
+  }
+  /**
+   * 设置当前索引
+   * @param {number} value - 当前索引
+   */
+  set currentIndex(value) {
+    this._setProperty("currentIndex", value);
   }
   /**
    * 检查是否启用轮询
    * @returns {boolean} - 是否启用轮询
    */
-  isRotationEnabled() {
+  get rotationEnabled() {
     return this._rotationEnabled;
+  }
+  /**
+   * 设置轮询启用状态
+   * @param {boolean} enabled - 是否启用轮询
+   */
+  set rotationEnabled(enabled) {
+    this._setProperty("rotation", enabled);
   }
   /**
    * 检查是否启用API统计
    * @returns {boolean} - 是否启用API统计
    */
-  isUsageEnabled() {
+  get usageEnabled() {
     return this._usageEnabled;
+  }
+
+  /**
+   * 设置API统计启用状态
+   * @param {boolean} enabled - 是否启用API统计
+   */
+  set usageEnabled(enabled) {
+    this._setProperty("usage", enabled);
   }
   /**
    * 检查是否启用错误处理
    * @returns {boolean} - 是否启用错误处理
    */
-  isErrorEnabled() {
+  get errorEnabled() {
     return this._errorEnabled;
+  }
+  /**
+   * 设置错误处理启用状态
+   * @param {boolean} enabled - 是否启用错误处理
+   */
+  set errorEnabled(enabled) {
+    this._setProperty("error", enabled);
+  }
+  /**
+   * 更新模型列表
+   * @param {Array} models - 新的模型列表
+   */
+  set models(models) {
+    this._setProperty("models", models);
   }
   /**
    * 通用属性操作方法
@@ -321,55 +375,6 @@ class GoogleAPI {
     }
 
     this.save();
-  }
-  /**
-   * 设置轮询启用状态
-   * @param {boolean} enabled - 是否启用轮询
-   */
-  setRotationEnabled(enabled) {
-    this._setProperty("rotation", enabled);
-  }
-  /**
-   * 设置API统计启用状态
-   * @param {boolean} enabled - 是否启用API统计
-   */
-  setUsageEnabled(enabled) {
-    this._setProperty("usage", enabled);
-  }
-  /**
-   * 设置错误处理启用状态
-   * @param {boolean} enabled - 是否启用错误处理
-   */
-  setErrorEnabled(enabled) {
-    this._setProperty("error", enabled);
-  }
-  /**
-   * 更新模型列表
-   * @param {Array} models - 新的模型列表
-   */
-  updateModels(models) {
-    this._setProperty("models", models);
-  }
-  /**
-   * 更新当前模型
-   */
-  updateCurrentModel() {
-    this._setProperty("currentModel");
-  }
-
-  /**
-   * 设置当前API密钥
-   * @param {string} key - API密钥
-   */
-  setCurrentApiKey(key) {
-    this._setProperty("currentApiKey", key);
-  }
-  /**
-   * 设置当前索引
-   * @param {number} index - 当前索引
-   */
-  setCurrentIndex(index) {
-    this._setProperty("currentIndex", index);
   }
 }
 export default GoogleAPI;

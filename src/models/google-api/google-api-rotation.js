@@ -18,10 +18,9 @@ class GoogleApiRotation {
    */
   switchApiKey() {
     // 如果未启用轮询，直接返回
-    if (!this._apiManager.isRotationEnabled()) return;
-
+    if (!this._apiManager.rotationEnabled) return;
     // 获取所有可用的API密钥
-    const activeApiKeys = this._apiManager.getApiKeys();
+    const activeApiKeys = this._apiManager.apiKeys;
     // 如果没有可用的API密钥
     if (activeApiKeys.length === 0) {
       toastr.error("没有可用的API密钥", "错误");
@@ -29,7 +28,7 @@ class GoogleApiRotation {
     }
     let key = null;
     let loopCount = 0;
-    let currentIndex = this._apiManager.getCurrentIndex();
+    let currentIndex = this._apiManager.currentIndex;
     while (loopCount < activeApiKeys.length) {
       currentIndex = (currentIndex + 1) % activeApiKeys.length;
       const apiKey = activeApiKeys[currentIndex];
@@ -49,8 +48,8 @@ class GoogleApiRotation {
     STFunction.setSecrets("api_key_makersuite", key);
 
     // 设置API密钥
-    this._apiManager.setCurrentApiKey(key);
-    this._apiManager.setCurrentIndex(currentIndex);
+    this._apiManager.currentApiKey = key;
+    this._apiManager.currentIndex = currentIndex;
     this._apiManager.setActiveApiKey(currentIndex);
   }
 }

@@ -9,6 +9,7 @@ class EventHandler {
    * @param {Function} handler - 事件处理函数
    */
   static bindEvent(selector, event, handler) {
+    $(selector).off(event);
     $(selector).on(event, handler);
   }
 

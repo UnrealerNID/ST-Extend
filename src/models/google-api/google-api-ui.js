@@ -3,6 +3,7 @@ import PluginSetting from "../../utils/plugin-setting.js";
 import STFunction from "../../utils/st-function.js";
 import "../../components/common/switch-button.js";
 import GoogleAPI from "./google-api.js";
+import PaginationManager from "../../utils/ui/pagination-manager.js";
 
 /**
  * GoogleAPIUI - 处理Google API设置界面的UI渲染和事件绑定
@@ -14,40 +15,93 @@ class GoogleAPIUI {
    */
   constructor(apiManager) {
     this._apiManager = apiManager;
+    this._pageSize = 5;
     this._container = null;
+    this._paginationManager = null;
+    this._lastApiKeysLength = 0;
+    this._lastCurrentIndex = -1;
+    this._clickHandler = null;
+    this._changeHandler = null;
   }
-
   /**
    * 初始化模板
    * @param {string|HTMLElement} containerSelector - 容器选择器或元素
    */
   initTemplate(containerSelector) {
-    const templatePath = `${PluginSetting.extensionFolderPath}/src/public/google-api.html`;
+    const templatePath = `${PluginSetting.extensionFolderPath}/public/google-api.html`;
     TemplateLoader.mountTemplate(
       templatePath,
       containerSelector,
       "google_api_container",
-      (container) => {
-        this._container = container;
-        // 初始化事件
-        this.initEvents();
-        // 渲染API密钥
-        this.renderApiKeys();
-        this.setActiveApiKey(this._apiManager.getCurrentIndex());
-      },
+      (container) => this._init(container),
       (error) => {
         console.error("加载Google API模板失败:", error);
       }
     );
   }
   /**
+   * 初始化UI组件
+   * @param {HTMLElement} container - 容器元素
+   */
+  _init(container) {
+    this._container = container;
+    // 初始化UI组件
+    this._initUI();
+
+    // 初始化分页管理器
+    this._paginationManager = new PaginationManager({
+      container: this._container.querySelector(".pagination"),
+      itemsSource: () => this._apiManager.apiKeys,
+      pageSize: this._pageSize,
+      onPageChange: ({ pageItems }) => this.renderApiKeys(pageItems),
+    });
+    // 添加事件委托
+    this._setupEventDelegation();
+
+    // 如果有当前选中的API密钥，跳转到对应页面
+    const currentIndex = this._apiManager.currentIndex;
+    if (currentIndex >= 0) {
+      this._paginationManager.jumpToItemPage(currentIndex);
+    } else {
+      // 否则刷新分页数据
+      this._paginationManager.refresh();
+    }
+    // 设置活跃API密钥
+    this.setActiveApiKey(currentIndex);
+  }
+  /**
    * 移除模板
    */
   removeTemplate() {
     if (!this._container) return;
-    // 移除所有事件监听器
-    $(this._container).find("button, input, select").off();
 
+    // 移除事件委托监听器
+    const container = this._container.querySelector(".google-api-content");
+    if (container && this._clickHandler) {
+      container.removeEventListener("click", this._clickHandler);
+      container.removeEventListener("change", this._changeHandler);
+      this._clickHandler = this._changeHandler = null;
+    }
+
+    // 移除按钮和复选框事件监听器
+    const elementsWithListeners = [
+      "#add_api",
+      "#batch_add",
+      "#update_models",
+      "#enable_rotation",
+      "#enable_usage",
+      "#enable_error",
+    ];
+    elementsWithListeners.forEach((selector) => {
+      const el = this._container.querySelector(selector);
+      if (el) el.replaceWith(el.cloneNode(true));
+    });
+
+    // 销毁分页管理器
+    if (this._paginationManager) {
+      this._paginationManager.destroy();
+      this._paginationManager = null;
+    }
     // 使用TemplateLoader卸载模板
     TemplateLoader.unmountTemplate(this._container);
 
@@ -57,51 +111,32 @@ class GoogleAPIUI {
     console.log("Google API UI 已移除");
   }
   /**
-   * 初始化事件
+   * 初始化UI组件
    */
-  initEvents() {
+  _initUI() {
     if (!this._container) return;
+    // 添加按钮事件监听
+    const buttonActions = {
+      "#add_api": () => this._apiManager.add(),
+      "#batch_add": () => this._apiManager.batchAdd(),
+      "#update_models": () => this._apiManager.apiModel.updateModels(),
+      "#enable_all": () => this._apiManager.toggleAllApiKeys(true),
+      "#disable_all": () => this._apiManager.toggleAllApiKeys(false),
+    };
 
-    // 添加API按钮
-    const addButton = this._container.querySelector("#add_api");
-    if (addButton) {
-      addButton.addEventListener("click", () => this._apiManager.add());
-    }
-
-    // 批量添加按钮
-    const batchAddButton = this._container.querySelector("#batch_add");
-    if (batchAddButton) {
-      batchAddButton.addEventListener("click", () =>
-        this._apiManager.batchAdd()
-      );
-    }
-
-    // 更新模型按钮
-    const updateModelsButton = this._container.querySelector("#update_models");
-    if (updateModelsButton) {
-      updateModelsButton.addEventListener("click", () =>
-        this._apiManager.getModel().updateModels()
-      );
-    }
+    Object.entries(buttonActions).forEach(([selector, action]) => {
+      const button = this._container.querySelector(selector);
+      if (button) button.addEventListener("click", action);
+    });
 
     // 初始化复选框
-    this._initCheckbox(
-      "enable_rotation",
-      "isRotationEnabled",
-      "setRotationEnabled",
-      "API轮询"
-    );
-    this._initCheckbox(
-      "enable_usage",
-      "isUsageEnabled",
-      "setUsageEnabled",
-      "用量统计"
-    );
-    this._initCheckbox(
-      "enable_error",
-      "isErrorEnabled",
-      "setErrorEnabled",
-      "错误记录"
+    const checkboxConfigs = [
+      ["enable_rotation", "rotationEnabled", "rotationEnabled", "API轮询"],
+      ["enable_usage", "usageEnabled", "usageEnabled", "用量统计"],
+      ["enable_error", "errorEnabled", "errorEnabled", "错误记录"],
+    ];
+    checkboxConfigs.forEach((config) =>
+      this._initCheckbox(config[0], config[1], config[2], config[3])
     );
   }
   /**
@@ -115,10 +150,10 @@ class GoogleAPIUI {
     const checkbox = this._container.querySelector(`#${id}`);
     if (checkbox) {
       // 初始化复选框状态
-      checkbox.checked = this._apiManager[getterMethod]();
+      checkbox.setAttribute("checked", this._apiManager[getterMethod]);
       // 添加事件监听
       checkbox.addEventListener("change", (e) => {
-        const enabled = e.target.checked;
+        const enabled = /** @type {HTMLInputElement} */ (e.target).checked;
         this._apiManager[setterMethod](enabled);
         toastr.info(`${featureName}已${enabled ? "启用" : "禁用"}`, "提示");
       });
@@ -126,21 +161,35 @@ class GoogleAPIUI {
   }
   /**
    * 渲染API密钥列表
+   * @param {Array} pageItems - 分页信息
    */
-  renderApiKeys() {
+  renderApiKeys(pageItems) {
     if (!this._container) return;
     const container = this._container.querySelector(".google-api-content");
     if (!container) return;
-
     // 清空容器
     container.innerHTML = "";
 
-    // 渲染每个API密钥
-    const apiKeys = this._apiManager.getApiKeys();
-    apiKeys.forEach((api, index) => {
-      const apiElement = this.createApiElement(api, index);
-      container.appendChild(apiElement);
+    // 如果没有数据，显示空状态
+    if (!pageItems || pageItems.length === 0) {
+      const emptyEl = document.createElement("div");
+      emptyEl.className = "empty-api-keys";
+      emptyEl.textContent = "No API keys found";
+      container.appendChild(emptyEl);
+      return;
+    }
+
+    // 使用文档片段减少DOM重排
+    const fragment = document.createDocumentFragment();
+
+    // 渲染API密钥到文档片段
+    pageItems.forEach((api) => {
+      const apiElement = this.createApiElement(api, api.index);
+      fragment.appendChild(apiElement);
     });
+
+    // 一次性更新DOM
+    container.appendChild(fragment);
 
     // 更新API状态显示
     this.updateApiStatus();
@@ -149,61 +198,85 @@ class GoogleAPIUI {
   /**
    * 创建API密钥元素
    * @param {Object} api - API密钥对象
-   * @param {number} index - 索引
+   * @param {number} apiIndex - API在原始数组中的索引
    * @returns {HTMLElement} - API密钥元素
    */
-  createApiElement(api, index) {
+  createApiElement(api, apiIndex) {
     const apiElement = document.createElement("div");
     apiElement.className = `api-key-item flex-container alignitemscenter`;
-    apiElement.dataset.index = index.toString();
+    apiElement.dataset.apiIndex = apiIndex.toString();
+    // 使用模板字符串简化HTML创建
+    const isActive = api.isActive ? "api-key-active" : "";
+    const activeTitle = api.isActive ? "当前API密钥" : "";
+    const enabled = api.enabled ? "value" : "";
 
-    // 创建基本结构
     apiElement.innerHTML = `
-    <switch-button id="api_enabled_${index}" ${
-      api.enabled ? "value" : ""
-    } title="切换API激活状态">
-    </switch-button>
+    <switch-button id="api_enabled_${apiIndex}" data-action="toggle" data-api-index="${apiIndex}" ${enabled} title="切换API激活状态"></switch-button>
     <div class="flex-container flex1">
-      <input type="text" id="api_key_${index}" class="text_pole flex1 ${
-      api.isActive ? "api-key-active" : ""
-    }" value="${api.key}" placeholder="输入Google API密钥" title="${
-      api.isActive ? "当前API密钥" : ""
-    }"/>
-      <div id="api_remove_${index}" class="menu_button fa-solid fa-trash-can interactable redWarningBG" title="删除API密钥"></div>
+      <input type="text" id="api_key_${apiIndex}" data-action="update" data-api-index="${apiIndex}" class="text_pole flex1 ${isActive}" value="${api.key}" placeholder="输入Google API密钥" title="${activeTitle}"/>
+      <div id="api_remove_${apiIndex}" data-action="remove" data-api-index="${apiIndex}" class="menu_button fa-solid fa-trash-can interactable redWarningBG" title="删除API密钥"></div>
     </div>
-    `;
+  `;
 
-    // 添加事件监听
-    this.addApiElementEvents(apiElement, index);
     return apiElement;
   }
-
   /**
-   * 为API密钥元素添加事件
-   * @param {HTMLElement} element - API密钥元素
-   * @param {number} index - 索引
+   * 设置事件委托
    */
-  addApiElementEvents(element, index) {
-    // 启用切换 - 使用自定义组件
-    const switchButton = element.querySelector(`#api_enabled_${index}`);
-    if (switchButton) {
-      switchButton.addEventListener("change", (e) => {
-        this._apiManager.update(index, "enabled", e.detail.value);
-      });
-    }
+  _setupEventDelegation() {
+    if (!this._container) return;
 
-    // API密钥输入
-    const keyInput = element.querySelector(`#api_key_${index}`);
-    if (keyInput) {
-      keyInput.addEventListener("change", (e) => {
-        this._apiManager.update(index, "key", e.target.value);
-      });
-    }
+    // 获取API内容容器
+    const container = this._container.querySelector(".google-api-content");
+    if (!container) return;
 
-    // 删除按钮
-    const removeBtn = element.querySelector(`#api_remove_${index}`);
-    if (removeBtn) {
-      removeBtn.addEventListener("click", () => this._apiManager.remove(index));
+    // 移除可能存在的旧事件监听器
+    if (this._clickHandler) {
+      container.removeEventListener("click", this._clickHandler);
+    }
+    if (this._changeHandler) {
+      container.removeEventListener("change", this._changeHandler);
+    }
+    // 点击事件处理
+    this._clickHandler = (e) => {
+      const target = e.target;
+      const action = target.dataset.action;
+      if (["toggle", "update"].includes(action)) return;
+      const apiIndex = parseInt(target.dataset.apiIndex);
+      this._handleApiAction(action, apiIndex);
+    };
+
+    // 变更事件处理
+    this._changeHandler = (e) => {
+      const target = e.target;
+      const action = target.dataset.action;
+      const apiIndex = parseInt(target.dataset.apiIndex);
+      const value = action === "toggle" ? e.detail.value : target.value;
+      this._handleApiAction(action, apiIndex, value);
+    };
+
+    // 添加事件监听器
+    container.addEventListener("click", this._clickHandler);
+    container.addEventListener("change", this._changeHandler);
+  }
+  /**
+   * 处理API密钥操作
+   * @param {string} action - 操作类型："remove"、"update"、"toggle"
+   * @param {number} apiIndex - API密钥索引
+   * @param {any} [value] - 操作值（仅在"update"时需要）
+   */
+  _handleApiAction(action, apiIndex, value) {
+    if (!action || isNaN(apiIndex)) return;
+    switch (action) {
+      case "remove":
+        this._apiManager.remove(apiIndex);
+        break;
+      case "update":
+        this._apiManager.update(apiIndex, "key", value);
+        break;
+      case "toggle":
+        this._apiManager.update(apiIndex, "enabled", value);
+        break;
     }
   }
 
@@ -212,19 +285,33 @@ class GoogleAPIUI {
    * @param {number} index - 要设置为活跃的API密钥索引
    */
   setActiveApiKey(index) {
+    if (!this._container) return;
     // 移除所有API输入框的活跃状态
     document.querySelectorAll(".text_pole").forEach((el) => {
       el.classList.remove("api-key-active");
     });
-
     // 设置当前API输入框为活跃状态
-    const activeElement = document.querySelector(`#api_key_${index}`);
+    const activeElement = this._container.querySelector(
+      `[data-api-index="${index}"][data-action="update"]`
+    );
+    this.jumpToApiPage(index);
     if (activeElement) {
       activeElement.classList.add("api-key-active");
+      // 更新API状态显示
+      this.updateApiStatus(index);
     }
-
-    // 更新API状态显示
-    this.updateApiStatus(index);
+  }
+  /**
+   * 跳转到指定API密钥所在的页面
+   * @param {number} index - API密钥的索引
+   */
+  jumpToApiPage(index) {
+    if (!this._container || !this._paginationManager) return;
+    if (index < 0) return;
+    this._paginationManager.jumpToItemPage(index);
+  }
+  refresh() {
+    this._paginationManager.refresh();
   }
 
   /**
@@ -252,34 +339,24 @@ class GoogleAPIUI {
   updateModelsList(models) {
     // 获取select元素
     const selectElement = document.getElementById("model_google_select");
-    if (!selectElement) {
+    if (!selectElement || !(selectElement instanceof HTMLSelectElement)) {
       toastr.error("找不到模型选择器元素", "错误");
       return;
     }
     // 保存当前选中的值
     const currentSelectedValue = selectElement.value;
     // 获取现有模型值列表，防止重复
-    // @ts-ignore
     const existingModelValues = Array.from(selectElement.options).map(
       (option) => option.value
     );
 
-    // 查找是否已存在"Plugin Models"组
-    let pluginModelsGroup = null;
-    for (const child of Array.from(selectElement.children)) {
-      if (
-        child.tagName === "OPTGROUP" &&
-        child.getAttribute("label") === "Plugin Models"
-      ) {
-        pluginModelsGroup = child;
-        break;
-      }
-    }
-
-    // 如果不存在，创建新的模型组
+    // 查找或创建"Plugin Models"组
+    let pluginModelsGroup = selectElement.querySelector(
+      'optgroup[label="Plugin Models"]'
+    );
     if (!pluginModelsGroup) {
       pluginModelsGroup = document.createElement("optgroup");
-      pluginModelsGroup.label = "Plugin Models";
+      pluginModelsGroup.setAttribute("label", "Plugin Models");
     }
 
     // 添加新模型
@@ -295,18 +372,12 @@ class GoogleAPIUI {
       }
     });
 
-    // 如果有新模型，确保组被添加到select
-    // @ts-ignore - pluginModelsGroup is a valid Node for contains method
+    // 如果有新模型，添加到select
     if (addedCount > 0 && !selectElement.contains(pluginModelsGroup)) {
-      // 添加模型组到select的开头
-      if (selectElement.firstChild) {
-        // @ts-ignore
-        selectElement.insertBefore(pluginModelsGroup, selectElement.firstChild);
-      } else {
-        // 如果select没有子元素，直接添加
-        // @ts-ignore
-        selectElement.appendChild(pluginModelsGroup);
-      }
+      selectElement.insertBefore(
+        pluginModelsGroup,
+        selectElement.firstChild || null
+      );
     }
     // 恢复之前选中的值
     selectElement.value = currentSelectedValue;
@@ -374,13 +445,13 @@ class GoogleAPIUI {
   /**
    * 更新API状态显示
    * 显示API总数和当前使用的API索引
-   * @param {number} activeIndex - 当前活跃的API索引
+   * @param {number} index - 当前活跃的API索引
    */
-  updateApiStatus(activeIndex = this._apiManager.getCurrentIndex() + 1) {
+  updateApiStatus(index = this._apiManager.currentIndex) {
     const statusElement = this._container?.querySelector("#api_status");
     if (!statusElement) return;
 
-    const totalApis = this._apiManager.getApiKeys().length;
+    const totalApis = this._apiManager.apiKeys.length;
 
     if (totalApis === 0) {
       statusElement.textContent = "没有配置API密钥";
@@ -388,7 +459,7 @@ class GoogleAPIUI {
     }
 
     // 索引从0开始，显示时+1更符合用户习惯
-    const displayIndex = activeIndex + 1;
+    const displayIndex = index + 1;
     statusElement.textContent = `${displayIndex} of ${totalApis}`;
   }
 }

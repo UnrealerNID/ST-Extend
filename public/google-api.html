@@ -1,8 +1,30 @@
 <!-- Google API管理界面容器 -->
-<div class="google-api-block">
-  <hr />
-  <!-- API密钥列表容器 -->
-  <div class="google-api-content"></div>
+<div
+  id="google-api-block"
+  class="google-api-block flex-container flexFlowColumn"
+>
+  <div class="inline-drawer">
+    <div class="inline-drawer-toggle inline-drawer-header">
+      <b>Google API 轮询</b>
+      <div class="flex-container flex1 alignitemscenter">
+        <small
+          id="api_status"
+          class="flex-container alignitemscenter interactable"
+        >
+        </small>
+      </div>
+      <div
+        class="inline-drawer-icon fa-solid fa-circle-chevron-down down interactable"
+      ></div>
+    </div>
+    <div class="inline-drawer-content">
+      <!-- API密钥列表容器 -->
+      <div class="google-api-content"></div>
+      <!-- 分页组件 -->
+      <div class="pagination"></div>
+      <hr />
+    </div>
+  </div>
   <!-- 添加API按钮容器 -->
   <div class="google-api-bottom flex-container">
     <div class="toggle-box flex-container flex1 flexnowrap">
@@ -33,6 +55,22 @@
     </div>
     <div class="flex-container flexnowrap">
       <div
+        id="enable_all"
+        class="menu_button menu_button_icon interactable"
+        title="启用所有API密钥"
+      >
+        <span class="fa-solid fa-check"></span>
+        <span>全部启用</span>
+      </div>
+      <div
+        id="disable_all"
+        class="menu_button menu_button_icon interactable"
+        title="禁用所有API密钥"
+      >
+        <span class="fa-solid fa-ban"></span>
+        <span>全部禁用</span>
+      </div>
+      <div
         id="add_api"
         class="menu_button menu_button_icon interactable"
         title="添加单个API密钥"
@@ -56,10 +94,6 @@
         <span class="fa-solid fa-sync"></span>
         <span>更新模型</span>
       </div>
-      <div
-        id="api_status"
-        class="flex-container alignitemscenter interactable"
-      ></div>
     </div>
     <hr />
   </div>

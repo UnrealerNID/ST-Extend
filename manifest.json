@@ -4,7 +4,7 @@
   "requires": [],
   "optional": [],
   "js": "src/index.js",
-  "css": "src/style.css",
+  "css": "public/css/style.css",
   "author": "UnrealerNID",
   "version": "1.0.0",
   "homePage": "https://github.com/UnrealerNID/SillyTavern-Extension-Plugins"

@@ -26,27 +26,25 @@ class SwitchButton extends HTMLElement {
     // 初始渲染
     this._render();
   }
-
   /**
    * 属性变化回调
    */
   attributeChangedCallback(name, oldValue, newValue) {
     if (oldValue === newValue) return;
 
-    switch (name) {
-      case "value":
-        this._state.checked = newValue !== null;
-        break;
-      case "title":
-        this._state.title = newValue || "";
-        break;
-      case "disabled":
-        this._state.disabled = newValue !== null;
-        break;
-    }
+    // 使用对象映射简化switch语句
+    const handlers = {
+      value: () => (this._state.checked = newValue !== null),
+      title: () => (this._state.title = newValue || ""),
+      disabled: () => (this._state.disabled = newValue !== null),
+    };
 
-    this._update();
+    if (handlers[name]) {
+      handlers[name]();
+      this._update();
+    }
   }
+
   /**
    * 组件挂载回调
    */
@@ -57,8 +55,6 @@ class SwitchButton extends HTMLElement {
     this._state.disabled = this.hasAttribute("disabled");
 
     this._update();
-
-    // 添加事件监听到组件本身
     this.addEventListener("click", this._handleClick.bind(this));
   }
 
@@ -99,18 +95,12 @@ class SwitchButton extends HTMLElement {
     // 防止递归调用
     if (this._updating) return;
     this._updating = true;
-
-    // 直接在组件上更新类
-    if (this._state.checked) {
-      this.classList.remove("fa-toggle-off");
-      this.classList.add("fa-toggle-on");
-    } else {
-      this.classList.remove("fa-toggle-on");
-      this.classList.add("fa-toggle-off");
-    }
-    // 设置标题提示
+    // 使用三元运算符简化类名切换
+    const addClass = this._state.checked ? "fa-toggle-on" : "fa-toggle-off";
+    const removeClass = this._state.checked ? "fa-toggle-off" : "fa-toggle-on";
+    this.classList.remove(removeClass);
+    this.classList.add(addClass);
     this.title = this._state.title;
-
     // 重置标志
     this._updating = false;
   }
@@ -118,10 +108,9 @@ class SwitchButton extends HTMLElement {
    * 渲染组件模板
    */
   _render() {
-    // 不创建子元素，而是直接在组件上添加类
-    this.classList.add("fa-solid");
-    this.classList.add(this._state.checked ? "fa-toggle-on" : "fa-toggle-off");
-    this.classList.add("killSwitch");
+    this.className = `fa-solid killSwitch ${
+      this._state.checked ? "fa-toggle-on" : "fa-toggle-off"
+    }`;
   }
 
   /**

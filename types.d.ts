@@ -1,8 +1,10 @@
-// 扩展HTMLElement接口，允许value属性为boolean类型
-interface HTMLElement {
-  value?: boolean | string;
+interface Node {
+  value?: string | boolean;
 }
 
+interface HTMLElement extends Node {
+  value?: string | boolean;
+}
 interface Element {
   style: CSSStyleDeclaration;
   title: string;

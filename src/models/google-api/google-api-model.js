@@ -18,7 +18,7 @@ class GoogleApiModel {
    */
   async updateModels() {
     try {
-      const key = this._apiManager.getCurrentApiKey();
+      const key = this._apiManager.currentApiKey;
       if (!key) {
         toastr.error("没有可用的API密钥", "错误");
         return;
@@ -58,9 +58,9 @@ class GoogleApiModel {
         toastr.warning("未找到Gemini系列模型", "警告");
         return;
       }
-      this._apiManager.updateModels(models);
+      this._apiManager.models = models;
       // 交由UI处理模型显示
-      const added = this._apiManager.getUI().updateModelsList(models);
+      const added = this._apiManager.apiUI.updateModelsList(models);
       if (added > 0) {
         toastr.success(`成功添加 ${added} 个新模型`, "成功");
       } else {

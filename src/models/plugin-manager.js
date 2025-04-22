@@ -1,7 +1,9 @@
 import PluginSetting from "../utils/plugin-setting.js";
 import GoogleAPI from "../models/google-api/google-api.js";
 import EventHandler from "../utils/event-handler.js";
+import MessageProcess from "../models/message-process/message-process.js";
 const google_api = new GoogleAPI();
+const message_processing = new MessageProcess();
 /**
  * 插件管理器
  */
@@ -10,6 +12,7 @@ class PluginManager {
     this._isInitialized = false;
     this._enabledPlugin = false;
     this._enabledGoogleApi = false;
+    this._enabledMessageProcessing = false;
     this._isRegistered = false;
     this._components = new Map();
   }
@@ -52,7 +55,7 @@ class PluginManager {
     if (!this._isRegistered) {
       return;
     }
-    this.unbindEvents();
+    // this.unbindEvents();
     this.unregisterComponents();
     window[PluginSetting.extensionName] =
       window[PluginSetting.extensionName] || {};
@@ -74,6 +77,16 @@ class PluginManager {
       false,
       "Google API 组件已注册",
       "Google API 组件已卸载"
+    );
+    // 消息处理组件
+    this.manageComponent(
+      "message_processing",
+      message_processing,
+      this._enabledMessageProcessing,
+      "#extensionsMenu",
+      false,
+      "消息处理组件已注册",
+      "消息处理组件已卸载"
     );
   }
 
@@ -112,8 +125,8 @@ class PluginManager {
    */
   loadSettings() {
     PluginSetting.initSettings();
-    this._enabledPlugin = PluginSetting.getSetting("enablePlugin", true);
-    this._enabledGoogleApi = PluginSetting.getSetting("enableGoogleApi", true);
+    this._enabledPlugin = PluginSetting.getSetting("enabledPlugin", true);
+    this._enabledGoogleApi = PluginSetting.getSetting("enabledGoogleApi", true);
     // 更新启用插件设置
     EventHandler.propEvent("#enable_plugin", "checked", this._enabledPlugin);
     // 更新启用轮询设置
@@ -124,6 +137,16 @@ class PluginManager {
     );
   }
   /**
+   * 保存设置
+   * @param {string} key - 设置键名
+   * @param {any} value - 设置值
+   */
+  save(key, value) {
+    console.log(`保存设置: ${key} = ${value}`);
+    this[`_${key}`] = value;
+    PluginSetting.setSetting(key, value);
+  }
+  /**
    * 处理启用插件变更
    * @param {Event} event - 输入事件
    */
@@ -131,8 +154,8 @@ class PluginManager {
     EventHandler.handleEvent({
       event,
       prop: "checked",
-      func: (key, value) => PluginSetting.setSetting(key, value),
-      settingKey: "enablePlugin",
+      func: (key, value) => this.save(key, value),
+      settingKey: "enabledPlugin",
       callback: (value) => {
         value ? this.register(true) : this.unregister(true);
       },
@@ -146,8 +169,8 @@ class PluginManager {
     EventHandler.handleEvent({
       event,
       prop: "checked",
-      func: (key, value) => PluginSetting.setSetting(key, value),
-      settingKey: "enableGoogleApi",
+      func: (key, value) => this.save(key, value),
+      settingKey: "enabledGoogleApi",
       callback: (value) => {
         this.manageComponent(
           "google_api",
@@ -182,6 +205,7 @@ class PluginManager {
     registerMsg,
     unregisterMsg
   ) {
+    if (!this._enabledPlugin) return;
     // 卸载逻辑
     if (!register) {
       if (!this._components.has(componentName)) {

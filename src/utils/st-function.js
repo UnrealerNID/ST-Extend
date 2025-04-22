@@ -3,7 +3,7 @@ import {
   event_types,
   saveSettingsDebounced,
 } from "../../../../../../script.js";
-import { extension_settings } from "../../../../../extensions.js";
+import { extension_settings, getContext } from "../../../../../extensions.js";
 import {
   callGenericPopup,
   POPUP_RESULT,
@@ -17,6 +17,9 @@ import { oai_settings } from "../../../../../openai.js";
  * 提供与SillyTavern核心功能交互的方法
  */
 class STFunction {
+  static getContext() {
+    return getContext();
+  }
   /**
    * 获取扩展设置
    * @param {string} extensionName - 扩展名称
