@@ -1,0 +1,27 @@
+.switch-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  line-height: 1;
+}
+.switch-button.size-small {
+  font-size: 1rem;
+}
+.switch-button.size-normal {
+  font-size: 1.2rem;
+}
+.switch-button.size-large {
+  font-size: 1.4rem;
+}
+.switch-button .fa-toggle-on {
+  color: var(--SmartThemeQuoteColor);
+}
+.switch-button .label {
+  display: inline-block;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  max-width: 100px;
+  text-overflow: ellipsis;
+  font-size: 0.8em;
+}

@@ -1,10 +1,8 @@
 import GoogleAPI from "./google-api/google-api.js";
 import DOMEventHandler from "../utils/ui/dom-event-handler.js";
-import MessageProcess from "./message-process/message-process.js";
 import ExtendUtils from "../utils/extend-utils.js";
 import TemplateLoader from "../utils/ui/template-loader.js";
 const google_api = new GoogleAPI();
-const message_processing = new MessageProcess();
 /**
  * 插件管理器
  */
@@ -13,7 +11,6 @@ class ExtendManager {
     this._isInitialized = false;
     this._enabledExtend = false;
     this._enabledGoogleApi = false;
-    this._enabledMessageProcessing = false;
     this._isRegistered = false;
     this._components = new Map();
     this._container = null;
@@ -24,11 +21,6 @@ class ExtendManager {
   init() {
     console.log(`${ExtendUtils.extensionName} 初始化`);
     this._mountTemplate();
-    return;
-    this.loadSettings();
-    if (this._enabledExtend) {
-      this.register();
-    }
     this._isInitialized = true;
   }
   /**
@@ -57,20 +49,107 @@ class ExtendManager {
    */
   _init(container) {
     this._container = container;
-    return;
-    this.bindEvents();
-    this.loadSettings();
-    if (this._enabledExtend) {
-      this.register();
-    }
+    this._load();
     this._isInitialized = true;
   }
 
-  bindEvents() {
-    // 绑定启用插件事件监听
-    DOMEventHandler.bind("#enable_extend", "input", (e) =>
-      this.onEnableExtendInput(e)
+  /**
+   * 获取事件映射配置
+   * @returns {Object} 事件映射配置
+   */
+  _eventMappings() {
+    return {
+      enable_extend: {
+        selector: "#enable_extend",
+        event: "change",
+        setting: "enabledExtend",
+        prop: "checked",
+        defaultValue: true,
+        callback: (value) =>
+          value ? this.register(true) : this.unregister(true),
+      },
+      enable_google_api: {
+        selector: "#enable_google_api",
+        event: "input",
+        setting: "enabledGoogleApi",
+        prop: "value",
+        defaultValue: false,
+        callback: (value) =>
+          this.manageComponent(
+            "google_api",
+            google_api,
+            value,
+            "#makersuite_form",
+            true,
+            "Google API 组件已注册",
+            "Google API 组件已卸载"
+          ),
+      },
+    };
+  }
+  /**
+   * 检查是否应该执行回调
+   * @param {string} key - 事件标识符
+   * @returns {boolean} 是否应该执行回调
+   */
+  _shouldRunCallback(key) {
+    return (
+      ["enable_extend", "enable_dev_mode"].includes(key) || this._enabledExtend
     );
+  }
+
+  /**
+   * 执行回调（如果满足条件）
+   * @param {string} key - 事件标识符
+   * @param {Function} callback - 回调函数
+   * @param {*} value - 传递给回调的值
+   */
+  _executeCallback(key, callback, value) {
+    if (callback && this._shouldRunCallback(key)) {
+      callback(value);
+    }
+  }
+  _handleEvent(key, event) {
+    const mappings = this._eventMappings();
+    if (key in mappings) {
+      const mapping = mappings[key];
+      console.log("处理事件:", key, mapping);
+
+      DOMEventHandler.handleEvent({
+        event,
+        prop: mapping.prop,
+        func: (key, value) => this.save(key, value),
+        settingKey: mapping.setting,
+        callback: this._shouldRunCallback(key) ? mapping.callback : null,
+      });
+    } else {
+      console.warn(`未找到事件处理方法: ${key}`);
+    }
+  }
+  _load() {
+    ExtendUtils.initSettings();
+    const mappings = this._eventMappings();
+    // 使用映射处理设置加载和事件绑定
+    Object.entries(mappings).forEach(([key, mapping]) => {
+      const settingKey = `_${mapping.setting}`;
+      // 加载设置
+      this[settingKey] = ExtendUtils.getSetting(
+        mapping.setting,
+        mapping.defaultValue
+      );
+      // 绑定事件
+      DOMEventHandler.bind(mapping.selector, mapping.event, (e) =>
+        this._handleEvent(key, e)
+      );
+      // 更新UI状态
+      DOMEventHandler.propEvent(
+        mapping.selector,
+        mapping.prop,
+        this[settingKey]
+      );
+      // 执行回调（如果满足条件）
+      this._executeCallback(key, mapping.callback, this[settingKey]);
+    });
   }
   /**
    * 注册插件加载器
@@ -80,8 +159,8 @@ class ExtendManager {
     if (this._isRegistered) {
       return;
     }
-    this.bindEvents();
-    this.registerComponents();
+    this._load();
+    this._registerComponents();
     window[ExtendUtils.extensionName] = window[ExtendUtils.extensionName] || {};
     window[ExtendUtils.extensionName]["extend_manager"] = this;
     console.log(`${ExtendUtils.extensionName} 已注册`);
@@ -96,7 +175,6 @@ class ExtendManager {
     if (!this._isRegistered) {
       return;
     }
-    // this.unbindEvents();
     this.unregisterComponents();
     window[ExtendUtils.extensionName] = window[ExtendUtils.extensionName] || {};
     window[ExtendUtils.extensionName]["extend_manager"] = null;
@@ -107,7 +185,7 @@ class ExtendManager {
   /**
    * 注册所有组件
    */
-  registerComponents() {
+  _registerComponents() {
     // 更新轮询设置
     this.manageComponent(
       "google_api",
@@ -117,16 +195,6 @@ class ExtendManager {
       false,
       "Google API 组件已注册",
       "Google API 组件已卸载"
-    );
-    // 消息处理组件
-    this.manageComponent(
-      "message_processing",
-      message_processing,
-      this._enabledMessageProcessing,
-      "#extensionsMenu",
-      false,
-      "消息处理组件已注册",
-      "消息处理组件已卸载"
     );
   }
 
@@ -145,86 +213,22 @@ class ExtendManager {
   }
 
   /**
-   * 绑定UI事件
-   */
-  bindExtendEvents() {
-    // 添加启用轮询事件监听
-    DOMEventHandler.bind("#enable_google_api", "input", (e) =>
-      this.onEnableGoogleApiInput(e)
-    );
-  }
-  /**
    * 解绑UI事件
    */
   unbindEvents() {
     // 移除启用轮询事件监听
     DOMEventHandler.unbind("#enable_google_api", "input");
   }
-  /**
-   * 加载设置
-   */
-  loadSettings() {
-    ExtendUtils.initSettings();
-    this._enabledExtend = ExtendUtils.getSetting("enabledExtend", true);
-    this._enabledGoogleApi = ExtendUtils.getSetting("enabledGoogleApi", true);
-    // 更新启用插件设置
-    DOMEventHandler.propEvent("#enable_extend", "checked", this._enabledExtend);
-    // 更新启用轮询设置
-    DOMEventHandler.propEvent(
-      "#enable_google_api",
-      "checked",
-      this._enabledGoogleApi
-    );
-  }
+
   /**
    * 保存设置
    * @param {string} key - 设置键名
    * @param {any} value - 设置值
    */
   save(key, value) {
-    console.log(`保存设置: ${key} = ${value}`);
     this[`_${key}`] = value;
     ExtendUtils.setSetting(key, value);
   }
-  /**
-   * 处理启用插件变更
-   * @param {Event} event - 输入事件
-   */
-  onEnableExtendInput(event) {
-    DOMEventHandler.handleEvent({
-      event,
-      prop: "checked",
-      func: (key, value) => this.save(key, value),
-      settingKey: "enabledExtend",
-      callback: (value) => {
-        value ? this.register(true) : this.unregister(true);
-      },
-    });
-  }
-  /**
-   * 处理启用轮询变更
-   * @param {Event} event - 输入事件
-   */
-  onEnableGoogleApiInput(event) {
-    DOMEventHandler.handleEvent({
-      event,
-      prop: "checked",
-      func: (key, value) => this.save(key, value),
-      settingKey: "enabledGoogleApi",
-      callback: (value) => {
-        this.manageComponent(
-          "google_api",
-          google_api,
-          value,
-          "#makersuite_form",
-          true,
-          "Google API 组件已注册",
-          "Google API 组件已卸载"
-        );
-      },
-    });
-  }
-
   /**
    * 通用组件注册或卸载方法
    * @param {string} componentName - 组件名称

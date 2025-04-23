@@ -3,134 +3,225 @@
  * 使用Font Awesome图标实现切换效果
  */
 class SwitchButton extends HTMLElement {
-  /**
-   * 定义需要观察的属性
-   */
   static get observedAttributes() {
-    return ["value", "title", "disabled"];
+    return ["checked", "title", "disabled", "size", "label"];
   }
 
-  /**
-   * 构造函数
-   */
   constructor() {
     super();
-
-    // 内部状态
     this._state = {
       checked: false,
       title: "",
       disabled: false,
+      size: "normal",
+      label: "",
     };
     this._updating = false;
-    // 初始渲染
+    this._internalUpdate = false;
     this._render();
   }
+
+  /**
+   * 处理尺寸值
+   * @param {string} val - 尺寸值
+   * @returns {string} - 处理后的尺寸值
+   */
+  _processSizeValue(val) {
+    if (!val) return "normal";
+
+    // 检查是否包含单位
+    if (/^\d+(\.\d+)?(px|rem|em|%|vh|vw)$/.test(val)) {
+      return val;
+    }
+    // 检查是否是纯数字
+    else if (!isNaN(parseFloat(val)) && isFinite(parseFloat(val))) {
+      return parseFloat(val) + "em";
+    }
+    return val;
+  }
+  /**
+   * 更新属性值并同步到DOM
+   * @param {string} prop - 内部状态属性名
+   * @param {any} value - 属性值
+   */
+  _updateProperty(prop, value) {
+    const oldValue = this._state[prop];
+    const newValue = prop === "size" ? this._processSizeValue(value) : value;
+    if (oldValue !== newValue) {
+      this._state[prop] = newValue;
+      this._internalUpdate = true;
+      // 修改内部处理
+      if (prop === "checked") {
+        this.setAttribute(prop, newValue);
+      } else if (newValue) {
+        this.setAttribute(prop, newValue);
+      } else {
+        this.removeAttribute(prop);
+      }
+      this._internalUpdate = false;
+
+      if (!this._updating) {
+        this._update();
+      }
+      return true;
+    }
+    return false;
+  }
+
   /**
    * 属性变化回调
+   * @param {string} name - 属性名
+   * @param {any} oldValue - 旧属性值
+   * @param {any} newValue - 新属性值
    */
   attributeChangedCallback(name, oldValue, newValue) {
-    if (oldValue === newValue) return;
+    if (this._internalUpdate || oldValue === newValue) return;
 
-    // 使用对象映射简化switch语句
     const handlers = {
-      value: () => (this._state.checked = newValue !== null),
-      title: () => (this._state.title = newValue || ""),
-      disabled: () => (this._state.disabled = newValue !== null),
+      checked: () => this._updateProperty("checked", newValue !== null),
+      title: () => this._updateProperty("title", newValue),
+      disabled: () => this._updateProperty("disabled", newValue !== null),
+      size: () => this._updateProperty("size", newValue),
+      label: () => this._updateProperty("label", newValue),
     };
 
     if (handlers[name]) {
       handlers[name]();
-      this._update();
     }
   }
 
-  /**
-   * 组件挂载回调
-   */
   connectedCallback() {
     // 初始化属性
-    this._state.checked = this.hasAttribute("value");
-    this._state.title = this.getAttribute("title") || "";
-    this._state.disabled = this.hasAttribute("disabled");
+    this._updateProperty("checked", this.hasAttribute("checked"));
+    this._updateProperty("title", this.getAttribute("title"));
+    this._updateProperty("disabled", this.hasAttribute("disabled"));
+    this._updateProperty("size", this.getAttribute("size"));
+    this._updateProperty("label", this.getAttribute("label"));
 
     this._update();
-    this.addEventListener("click", this._handleClick.bind(this));
+    this._boundClickHandler = this._handleClick.bind(this);
+    this.addEventListener("click", this._boundClickHandler);
   }
 
-  /**
-   * 组件卸载回调
-   */
   disconnectedCallback() {
-    this.removeEventListener("click", this._handleClick);
+    this.removeEventListener("click", this._boundClickHandler);
+    this._boundClickHandler = null;
   }
 
   /**
    * 处理点击事件
+   * @param {Event} event - 事件对象
    */
-  _handleClick() {
+  _handleClick(event) {
     if (this._state.disabled) return;
-
-    this._state.checked = !this._state.checked;
-    // 先更新属性，这会触发attributeChangedCallback，然后调用_update
-    if (this._state.checked) {
-      this.setAttribute("value", "");
-    } else {
-      this.removeAttribute("value");
+    const newValue = !this._state.checked;
+    if (this._updateProperty("checked", newValue)) {
+      // 触发change事件
+      this.dispatchEvent(
+        new CustomEvent("change", {
+          bubbles: true,
+          detail: { checked: newValue },
+        })
+      );
     }
-
-    // 触发change事件
-    this.dispatchEvent(
-      new CustomEvent("change", {
-        bubbles: true,
-        detail: { value: this._state.checked },
-      })
-    );
   }
 
   /**
-   * 更新组件UI
+   * 更新组件状态
    */
   _update() {
-    // 防止递归调用
     if (this._updating) return;
     this._updating = true;
-    // 使用三元运算符简化类名切换
+
+    // 确保开关元素存在
+    if (!this._switchElement) {
+      this._render();
+    }
+
+    // 更新开关状态
     const addClass = this._state.checked ? "fa-toggle-on" : "fa-toggle-off";
     const removeClass = this._state.checked ? "fa-toggle-off" : "fa-toggle-on";
-    this.classList.remove(removeClass);
-    this.classList.add(addClass);
+    this._switchElement.classList.remove(removeClass);
+    this._switchElement.classList.add(addClass);
+
+    // 更新大小
+    this.classList.remove("size-small", "size-normal", "size-large");
+
+    // 应用大小
+    if (["small", "normal", "large"].includes(this._state.size)) {
+      this.classList.add(`size-${this._state.size}`);
+      this.style.fontSize = "";
+    } else {
+      this.style.fontSize = this._state.size;
+    }
+
+    // 设置标题
     this.title = this._state.title;
-    // 重置标志
+
+    // 处理标签
+    if (this._labelElement) {
+      if (this._state.label) {
+        this._labelElement.textContent = this._state.label;
+        this._labelElement.style.display = "";
+      } else {
+        this._labelElement.textContent = "";
+        this._labelElement.style.display = "none";
+      }
+    }
+
     this._updating = false;
-  }
-  /**
-   * 渲染组件模板
-   */
-  _render() {
-    this.className = `fa-solid killSwitch ${
-      this._state.checked ? "fa-toggle-on" : "fa-toggle-off"
-    }`;
   }
 
   /**
-   * 获取/设置开关状态
+   * 渲染组件
    */
-  get value() {
+  _render() {
+    this.innerHTML = "";
+
+    // 直接创建开关图标元素
+    this._switchElement = document.createElement("div");
+    this._switchElement.className = `icon fa-solid ${
+      this._state.checked ? "fa-toggle-on" : "fa-toggle-off"
+    }`;
+
+    // 创建标签元素
+    this._labelElement = document.createElement("span");
+    this._labelElement.className = "label";
+
+    // 直接将开关图标和标签添加到组件中
+    this.appendChild(this._switchElement);
+    this.appendChild(this._labelElement);
+
+    // 给组件自身添加容器类
+    this.className = `switch-button size-${this._state.size}`;
+  }
+
+  /**
+   * 公共API
+   */
+  get checked() {
     return this._state.checked;
   }
 
-  set value(val) {
-    this._state.checked = Boolean(val);
-    this._update();
+  set checked(val) {
+    this._updateProperty("checked", Boolean(val));
+  }
 
-    if (this._state.checked) {
-      this.setAttribute("value", "");
-    } else {
-      this.removeAttribute("value");
-    }
+  get size() {
+    return this._state.size;
+  }
+
+  set size(val) {
+    this._updateProperty("size", val);
+  }
+
+  get label() {
+    return this._state.label;
+  }
+
+  set label(val) {
+    this._updateProperty("label", val);
   }
 }
-
 // 注册自定义元素
 customElements.define("switch-button", SwitchButton);

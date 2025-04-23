@@ -1,15 +1,18 @@
 <div class="extension_manager">
   <div class="extension_header">
-    <div>
-      <switch-button id="enable_extend" title="扩展总开关"></switch-button>
-      <span>启用扩展</span>
+    <div class="left-container">
+      <div class="flex-container">
+        <switch-button
+          id="enable_extend"
+          title="扩展总开关"
+          label="启用扩展"
+          size="small"
+        ></switch-button>
+      </div>
     </div>
-    <!-- dev-start -->
-    <div>
-      <switch-button id="enable_dev_mode" title="开发模式"></switch-button>
-      <span>开发模式</span>
+    <div class="right-container">
+      <small id="version" class="version"> v1.0.0 </small>
     </div>
-    <!-- dev-end -->
   </div>
   <!-- 启用插件设置 -->
   <div class="extension_block flex-container">
@@ -32,10 +35,29 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    padding: 5px;
   }
   .extension_header {
     display: flex;
     justify-content: space-between;
     width: 100%;
   }
+  .extension_header .left-container,
+  .extension_header .right-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: start;
+    flex: 1;
+    gap: 5px;
+  }
+  .extension_header .left-container {
+    align-items: start;
+  }
+  .extension_header .right-container {
+    align-items: end;
+  }
 </style>
+<script>
+  import { VERSION } from "../../branch-config.js";
+  document.getElementById("version").textContent = `v${VERSION}`;
+</script>

@@ -28,7 +28,16 @@ class TemplateLoader {
       }
 
       // 将响应转换为文本格式的HTML
-      const html = await response.text();
+      let html = await response.text();
+
+      // 处理开发模式标记
+      // 从branch-config.js导入配置
+      const { BRANCH } = await import("../../../branch-config.js");
+
+      if (!BRANCH.IS_DEV) {
+        // 在非开发分支移除开发模式相关内容
+        html = html.replace(/<!-- dev-start -->[\s\S]*?<!-- dev-end -->/g, "");
+      }
 
       // 获取容器元素 - 支持选择器字符串或直接传入DOM元素
       let container;

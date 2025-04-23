@@ -61,8 +61,6 @@ class DOMEventHandler {
    */
   static propEvent(selector, prop, value) {
     if (!selector || !prop) return;
-
-    // 只设置属性，不触发事件
     $(selector).prop(prop, value);
   }
   /**
@@ -70,9 +68,9 @@ class DOMEventHandler {
    * @param {Object} options - 事件处理选项
    * @param {Event} [options.event] - 事件对象
    * @param {string} [options.prop] - 属性名
-   * @param {Function} [options.func] - 事件处理函数
+   * @param {function(string, any): void} [options.func] - 事件处理函数
    * @param {string} [options.settingKey] - 设置键名
-   * @param {Function} [options.callback] - 回调函数
+   * @param {function(any): void} [options.callback] - 回调函数
    */
   static handleEvent({
     event,
@@ -82,7 +80,6 @@ class DOMEventHandler {
     callback = null,
   } = {}) {
     if (!event || !prop) return;
-
     const value = $(event.target).prop(prop);
     if (func && settingKey) {
       func(settingKey, value);
