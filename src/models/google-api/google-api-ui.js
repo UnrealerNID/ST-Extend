@@ -1,9 +1,9 @@
-import TemplateLoader from "../../utils/template-loader.js";
-import PluginSetting from "../../utils/plugin-setting.js";
-import STFunction from "../../utils/st-function.js";
+import TemplateLoader from "../../utils/ui/template-loader.js";
+import ExtendSetting from "../../utils/extend-utils.js";
 import "../../components/common/switch-button.js";
 import GoogleAPI from "./google-api.js";
 import PaginationManager from "../../utils/ui/pagination-manager.js";
+import ExtendUtils from "../../utils/extend-utils.js";
 
 /**
  * GoogleAPIUI - 处理Google API设置界面的UI渲染和事件绑定
@@ -28,7 +28,7 @@ class GoogleAPIUI {
    * @param {string|HTMLElement} containerSelector - 容器选择器或元素
    */
   initTemplate(containerSelector) {
-    const templatePath = `${PluginSetting.extensionFolderPath}/public/google-api.html`;
+    const templatePath = `${ExtendSetting.extensionFolderPath}/public/google-api.html`;
     TemplateLoader.mountTemplate(
       templatePath,
       containerSelector,
@@ -322,7 +322,7 @@ class GoogleAPIUI {
     // 创建弹窗内容
     const html = `<h3>请输入API密钥，每行一个</h3>`;
     // 调用通用弹窗
-    STFunction.callGenericPopup(html, "INPUT", "", {
+    ExtendUtils.callGenericPopup(html, "INPUT", "", {
       okButton: "添加",
       cancelButton: "取消",
       rows: 10,
@@ -350,13 +350,13 @@ class GoogleAPIUI {
       (option) => option.value
     );
 
-    // 查找或创建"Plugin Models"组
-    let pluginModelsGroup = selectElement.querySelector(
-      'optgroup[label="Plugin Models"]'
+    // 查找或创建"Extend Models"组
+    let extendModelsGroup = selectElement.querySelector(
+      'optgroup[label="Extend Models"]'
     );
-    if (!pluginModelsGroup) {
-      pluginModelsGroup = document.createElement("optgroup");
-      pluginModelsGroup.setAttribute("label", "Plugin Models");
+    if (!extendModelsGroup) {
+      extendModelsGroup = document.createElement("optgroup");
+      extendModelsGroup.setAttribute("label", "Extend Models");
     }
 
     // 添加新模型
@@ -367,15 +367,15 @@ class GoogleAPIUI {
         const option = document.createElement("option");
         option.value = model.model;
         option.textContent = `${model.name} (${model.model})`;
-        pluginModelsGroup.appendChild(option);
+        extendModelsGroup.appendChild(option);
         addedCount++;
       }
     });
 
     // 如果有新模型，添加到select
-    if (addedCount > 0 && !selectElement.contains(pluginModelsGroup)) {
+    if (addedCount > 0 && !selectElement.contains(extendModelsGroup)) {
       selectElement.insertBefore(
-        pluginModelsGroup,
+        extendModelsGroup,
         selectElement.firstChild || null
       );
     }

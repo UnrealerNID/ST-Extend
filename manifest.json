@@ -3,7 +3,7 @@
   "loading_order": 100,
   "requires": [],
   "optional": [],
-  "js": "src/index.js",
+  "js": "index.js",
   "css": "public/css/style.css",
   "author": "UnrealerNID",
   "version": "1.0.0",

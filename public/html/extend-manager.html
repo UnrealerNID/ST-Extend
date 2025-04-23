@@ -1,0 +1,41 @@
+<div class="extension_manager">
+  <div class="extension_header">
+    <div>
+      <switch-button id="enable_extend" title="扩展总开关"></switch-button>
+      <span>启用扩展</span>
+    </div>
+    <!-- dev-start -->
+    <div>
+      <switch-button id="enable_dev_mode" title="开发模式"></switch-button>
+      <span>开发模式</span>
+    </div>
+    <!-- dev-end -->
+  </div>
+  <!-- 启用插件设置 -->
+  <div class="extension_block flex-container">
+    <input type="checkbox" id="enable_extend" />
+    <label for="enable_extend">启用插件</label>
+  </div>
+  <hr />
+  <!-- 插件设置 -->
+  <!-- Google API 设置 -->
+  <div class="extension_block flex-container">
+    <input type="checkbox" id="enable_google_api" />
+    <label for="enable_google_api" title="启用Google API">
+      启用Google API
+    </label>
+  </div>
+</div>
+<style>
+  .extension_manager {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  .extension_header {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+  }
+</style>

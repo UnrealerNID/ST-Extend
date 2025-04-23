@@ -1,9 +1,9 @@
-import PluginSetting from "../../utils/plugin-setting.js";
-import STFunction from "../../utils/st-function.js";
+import ExtendSetting from "../../utils/extend-utils.js";
 import GoogleAPIUI from "./google-api-ui.js";
 import GoogleAPIError from "./google-api-error.js";
 import GoogleApiModel from "./google-api-model.js";
 import GoogleApiRotation from "./google-api-rotation.js";
+import ExtendUtils from "../../utils/extend-utils.js";
 // 默认API密钥
 const DEFAULT_API_KEY = {
   key: "",
@@ -59,10 +59,10 @@ class GoogleAPI {
    */
   _registerEventListeners() {
     // 注册事件监听器
-    STFunction.addEventListener("CHAT_COMPLETION_SETTINGS_READY", () => {
+    ExtendUtils.eventOn("CHAT_COMPLETION_SETTINGS_READY", () => {
       this._apiRotation.switchApiKey();
     });
-    STFunction.addEventListener("CHATCOMPLETION_MODEL_CHANGED", () => {
+    ExtendUtils.eventOn("CHATCOMPLETION_MODEL_CHANGED", () => {
       this.updateCurrentModel();
     });
   }
@@ -73,10 +73,10 @@ class GoogleAPI {
     // 清除错误监听
     this._apiError.clearListeners();
     // 移除事件监听器
-    STFunction.removeEventListener("CHAT_COMPLETION_SETTINGS_READY", () => {
+    ExtendUtils.eventOff("CHAT_COMPLETION_SETTINGS_READY", () => {
       this._apiRotation.switchApiKey();
     });
-    STFunction.removeEventListener("CHATCOMPLETION_MODEL_CHANGED", () => {
+    ExtendUtils.eventOff("CHATCOMPLETION_MODEL_CHANGED", () => {
       this.updateCurrentModel();
     });
     // 清理UI
@@ -90,7 +90,7 @@ class GoogleAPI {
    * 加载保存的API密钥
    */
   async load() {
-    const settings = PluginSetting.getSetting(
+    const settings = ExtendSetting.getSetting(
       "google_api_settings",
       DEFAULT_SETTINGS
     );
@@ -106,7 +106,7 @@ class GoogleAPI {
     this._toastrId = settings.TOASTR_ID;
     // 如果没有API密钥，从ST获取
     if (this._apiKey?.length === 1 && this._apiKey[0].key === "") {
-      const result = await STFunction.getSecrets();
+      const result = await ExtendUtils.getSecrets();
       if (result && result.api_key_makersuite) {
         this._apiKey[0] = {
           ...DEFAULT_API_KEY,
@@ -130,7 +130,7 @@ class GoogleAPI {
    * 保存API密钥
    */
   save() {
-    PluginSetting.setSetting("google_api_settings", {
+    ExtendSetting.setSetting("google_api_settings", {
       API_KEY: this._apiKey,
       CURRY_INDEX: this._currentIndex,
       ROTATION_ENABLED: this._rotationEnabled,
@@ -364,7 +364,7 @@ class GoogleAPI {
       currentIndex: "_currentIndex",
       // 特殊处理
       currentModel: () => {
-        this._curryModel = STFunction.oai_settings.google_model;
+        this._curryModel = ExtendUtils.getOaiSettings().google_model;
       },
     };
 

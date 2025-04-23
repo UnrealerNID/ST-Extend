@@ -1,3 +1,7 @@
+declare const jQuery: typeof import("jquery");
+declare const $: any;
+declare const toastr: any;
+
 interface Node {
   value?: string | boolean;
 }

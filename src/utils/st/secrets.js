@@ -1,7 +1,9 @@
-import { callGenericPopup, POPUP_TYPE } from "../../../../../../popup.js";
+import Popup from "./popup.js";
 import { getRequestHeaders } from "../../../../../../../script.js";
 import { writeSecret } from "../../../../../../secrets.js";
-
+/**
+ * Secrets - 提供与SillyTavern密钥交互的方法
+ */
 class Secrets {
   static async getSecrets() {
     const response = await fetch("/api/secrets/view", {
@@ -10,9 +12,9 @@ class Secrets {
     });
 
     if (response.status === 403) {
-      callGenericPopup(
+      Popup.callGenericPopup(
         "<h3>禁止访问</h3><p>要在此处查看您的 API 密钥，请在 config.yaml 文件中将 allowKeysExposure 的值设置为 true，然后重新启动 SillyTavern 服务器。</p>",
-        POPUP_TYPE.TEXT
+        "TEXT"
       );
       return;
     }

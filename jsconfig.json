@@ -6,9 +6,8 @@
     "strictNullChecks": false,
     "lib": ["dom", "es2015"],
     "typeRoots": ["."],
-    "baseUrl": ".",
     "types": []
   },
-  "include": ["src/**/*", "*.d.ts", "global.d.ts"],
+  "include": ["src/**/*", "*.d.ts", "index.js"],
   "exclude": ["node_modules", "**/node_modules/*"]
 }

@@ -1,4 +1,4 @@
-import STFunction from "../../utils/st-function.js";
+import ExtendUtils from "../../utils/extend-utils.js";
 import GoogleAPI from "./google-api.js";
 
 /**
@@ -45,7 +45,7 @@ class GoogleApiRotation {
       return;
     }
     // 设置API密钥
-    STFunction.setSecrets("api_key_makersuite", key);
+    ExtendUtils.setSecrets("api_key_makersuite", key);
 
     // 设置API密钥
     this._apiManager.currentApiKey = key;

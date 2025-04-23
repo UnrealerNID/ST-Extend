@@ -1,4 +1,4 @@
-import ToastrCapture from "../../utils/toastr-capture.js";
+import ToastrCapture from "../../utils/ui/toastr-capture.js";
 
 // 错误类型定义
 const GOOGLE_ERROR = {

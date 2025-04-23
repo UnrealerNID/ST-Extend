@@ -1,15 +1,15 @@
 /**
  * 事件处理工具类
  */
-class EventHandler {
+class DOMEventHandler {
   /**
    * 绑定单个UI事件
    * @param {string} selector - 元素选择器
    * @param {string} event - 事件名称
    * @param {Function} handler - 事件处理函数
    */
-  static bindEvent(selector, event, handler) {
-    $(selector).off(event);
+  static bind(selector, event, handler) {
+    this.unbind(selector, event);
     $(selector).on(event, handler);
   }
 
@@ -18,7 +18,7 @@ class EventHandler {
    * @param {string} selector - 元素选择器
    * @param {string} event - 事件名称
    */
-  static unbindEvent(selector, event) {
+  static unbind(selector, event) {
     $(selector).off(event);
   }
 
@@ -29,7 +29,7 @@ class EventHandler {
    * @param {string} [options.event] - 要触发的事件名称
    * @param {Object} [options.data] - 事件数据
    */
-  static triggerEvent({ selector, event, data = null } = {}) {
+  static trigger({ selector, event, data = null } = {}) {
     if (!selector || !event) return;
     $(selector).trigger(event, data);
   }
@@ -93,4 +93,4 @@ class EventHandler {
   }
 }
 
-export default EventHandler;
+export default DOMEventHandler;
